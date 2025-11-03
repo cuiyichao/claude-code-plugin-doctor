@@ -1,0 +1,9 @@
+{
+  "name": "project-init",
+  "description": "快速初始化项目 CLAUDE.md 规范文件，基于 CLAUDE_TEMPLATE.md 模板生成定制化开发规范",
+  "version": "1.0.0",
+  "author": {
+    "name": "Wang Xuecheng",
+    "email": "ahut17353766123@gmail.com"
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "claude-code-third-party-plugins",
+  "version": "1.0.0",
+  "description": "Claude Code 插件市场，包含项目初始化、开发辅助等实用工具",
+  "owner": {
+    "name": "Claude Code Community",
+    "email": "wangxuecheng@example.com"
+  },
+  "plugins": [
+    {
+      "name": "project-init",
+      "description": "基于 CLAUDE_TEMPLATE.md 模板快速初始化项目 CLAUDE.md 规范文件，通过交互式问答生成定制化开发规范",
+      "version": "1.0.0",
+      "author": {
+        "name": "Wang Xuecheng",
+        "email": "wangxuecheng@example.com"
+      },
+      "source": "./plugins/project-init",
+      "category": "productivity",
+      "keywords": ["init", "setup", "template", "configuration", "project-management"],
+      "commands": [
+        "/project-init"
+      ]
+    }
+  ]
+}
