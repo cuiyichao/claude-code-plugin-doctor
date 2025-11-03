@@ -60,5 +60,5 @@
 
 ---
 
-[未发布]: https://github.com/yourusername/claude-code-plugins/compare/v1.0.0...HEAD
-[1.0.0]: https://github.com/yourusername/claude-code-plugins/releases/tag/v1.0.0
+[未发布]: https://github.com/ChamHerry/claude-code-third-party-plugins/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/ChamHerry/claude-code-third-party-plugins/releases/tag/v1.0.0

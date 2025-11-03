@@ -21,8 +21,8 @@
 ### 2. 克隆仓库
 
 ```bash
-git clone https://github.com/your-username/claude-code-plugins.git
-cd claude-code-plugins
+git clone https://github.com/ChamHerry/claude-code-third-party-plugins.git
+cd claude-code-third-party-plugins
 ```
 
 ### 3. 创建分支
@@ -258,7 +258,7 @@ description: 命令的简要描述
 
 ### 提交想法
 
-有新插件想法？[创建 Issue →](../../issues/new?template=plugin-idea.md)
+有新插件想法？[创建 Issue →](https://github.com/ChamHerry/claude-code-third-party-plugins/issues/new)
 
 ## ❓ 常见问题
 
@@ -292,8 +292,8 @@ A: 通常 3-7 天。我们会仔细审查以确保质量。
 
 ## 📞 联系我们
 
-- **Issues**: [提交问题](../../issues)
-- **Discussions**: [参与讨论](../../discussions)
+- **Issues**: [提交问题](https://github.com/ChamHerry/claude-code-third-party-plugins/issues)
+- **Discussions**: [参与讨论](https://github.com/ChamHerry/claude-code-third-party-plugins/discussions)
 - **Email**: wangxuecheng@example.com
 
 ---

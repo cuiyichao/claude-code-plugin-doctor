@@ -44,34 +44,48 @@ Claude Code 插件是通过自定义斜杠命令（Slash Commands）、专用代
 
 ## 📥 安装方法
 
-### 方式一：全局安装（推荐）
+### 方式一：使用 Claude Code 命令安装（推荐）
+
+```bash
+# 启动 Claude Code
+claude
+
+# 使用 plugin add 命令添加整个市场
+/plugin add https://github.com/ChamHerry/claude-code-third-party-plugins
+
+# 或者仅添加特定插件
+/plugin add https://github.com/ChamHerry/claude-code-third-party-plugins/tree/main/plugins/project-init
+```
+
+### 方式二：手动克隆安装
 
 ```bash
 # 克隆插件市场仓库
-git clone <your-plugin-marketplace-repo>
-cd claude-code-plugins
+git clone https://github.com/ChamHerry/claude-code-third-party-plugins.git
+cd claude-code-third-party-plugins
 
 # 复制插件到 Claude Code 全局目录
 cp -r plugins/* ~/.claude/plugins/
 ```
 
-### 方式二：项目级安装
+### 方式三：项目级安装
 
 ```bash
 # 在项目目录下
 cd /path/to/your/project
 
-# 克隆或下载插件
-git clone <your-plugin-marketplace-repo> .claude-plugins
+# 克隆插件仓库
+git clone https://github.com/ChamHerry/claude-code-third-party-plugins.git .claude-plugins
 
 # 在 .claude/settings.json 中配置插件路径
 ```
 
-### 方式三：单个插件安装
+### 方式四：单个插件安装
 
 ```bash
 # 仅安装特定插件
-cp -r plugins/project-init ~/.claude/plugins/
+git clone https://github.com/ChamHerry/claude-code-third-party-plugins.git
+cp -r claude-code-third-party-plugins/plugins/project-init ~/.claude/plugins/
 ```
 
 ## 🚀 使用插件
@@ -250,7 +264,7 @@ _即将推出..._
 - **性能分析**：代码性能优化建议
 - **依赖更新**：自动更新依赖版本
 
-[提交想法 Issue →](../../issues/new)
+[提交想法 Issue →](https://github.com/ChamHerry/claude-code-third-party-plugins/issues/new)
 
 ## 📜 许可证
 
@@ -265,8 +279,8 @@ _即将推出..._
 
 ## 📞 联系我们
 
-- **Issues**: [提交问题](../../issues)
-- **Discussions**: [参与讨论](../../discussions)
+- **Issues**: [提交问题](https://github.com/ChamHerry/claude-code-third-party-plugins/issues)
+- **Discussions**: [参与讨论](https://github.com/ChamHerry/claude-code-third-party-plugins/discussions)
 - **Email**: wangxuecheng@example.com
 
 ---
