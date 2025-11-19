@@ -33,7 +33,7 @@
     {
       "name": "project-doctor",
       "description": "智能项目审计员：分析项目架构并深度挖掘代码逻辑缺陷，以业务功能为维度进行全链路诊断",
-      "version": "1.0.0",
+      "version": "2.0.0",
       "author": {
         "name": "Claude Code User",
         "email": ""
