@@ -14,6 +14,56 @@ description: 智能分析项目架构，生成规范文档，并深度扫描核�
 
 采用与 `project-init` 插件相同的深度分析方法，构建完整的项目架构视图。
 
+---
+
+## ⚠️ 关键原则：目录扫描限制
+
+**绝对不允许向上级目录查找或扫描**
+
+### 为什么？
+
+考虑以下 Monorepo 结构：
+
+```
+myproject/
+├── frontend/          ← 如果在这里运行 /project-doctor
+│   ├── package.json   ← 只应分析这个
+│   └── src/
+├── backend/           ← 如果在这里运行 /project-doctor
+│   ├── go.mod         ← 只应分析这个
+│   └── src/
+└── README.md
+```
+
+**正确行为**：
+- ✅ 在 `myproject/frontend/` 运行 → 只分析前端项目
+- ✅ 在 `myproject/backend/` 运行 → 只分析后端项目
+- ✅ 在 `myproject/` 运行 → 检测到 Monorepo，分析所有子项目
+
+**错误行为**：
+- ❌ 在 `myproject/backend/` 运行却向上找到 `../frontend/package.json`
+- ❌ 在 `myproject/frontend/` 运行却读取 `../backend/go.mod`
+- ❌ 混淆前后端项目的配置和代码
+
+### 实现规则
+
+1. **配置文件读取**：
+   - ✅ `Read ./package.json`
+   - ✅ `Read ./go.mod`
+   - ❌ `Read ../package.json`
+   - ❌ `Read ../../config.yml`
+
+2. **目录扫描**：
+   - ✅ `Glob: ./src/**/*`
+   - ✅ `Glob: */package.json`（向下查找子目录）
+   - ❌ `Glob: ../**/*`
+   - ❌ `Glob: ../../**/*`
+
+3. **代码搜索**：
+   - ✅ `Grep "import" --path ./src/`
+   - ✅ `Grep "mysql"` （默认在当前目录）
+   - ❌ 不指定路径时可能向上搜索
+
 ### 1.1 Monorepo 检测
 
 **目标**: 智能检测项目是否为 Monorepo（包含多个子项目）
@@ -69,10 +119,25 @@ MonorepoDetection = {
 
 #### a. 检测项目类型与技术栈
 
+**⚠️ 重要原则：只在当前目录及子目录查找配置文件，绝不向上级目录查找**
+
+原因：
+- 避免在子项目中错误分析父项目
+- 正确处理 Monorepo 结构（如 `myproject/backend/` 和 `myproject/frontend/` 是独立项目）
+- 确保分析范围与用户运行命令的目录一致
+
 **Node.js/TypeScript 项目**:
 ```bash
-Read package.json
-提取:
+# 1. 先尝试读取当前目录的配置文件
+Read ./package.json
+
+# 2. 如果当前目录没有，使用 Glob 在子目录查找
+Glob: */package.json
+Glob: */*/package.json  # 最多向下两层
+
+# 3. 绝不执行 Read ../package.json（向上查找）
+
+提取信息:
   - name, description
   - dependencies 中的框架 (react, vue, next, express, nestjs)
   - devDependencies 中的 typescript
@@ -82,8 +147,16 @@ Read package.json
 
 **Go 项目**:
 ```bash
-Read go.mod
-提取:
+# 1. 先尝试读取当前目录的配置文件
+Read ./go.mod
+
+# 2. 如果当前目录没有，使用 Glob 在子目录查找
+Glob: */go.mod
+Glob: */*/go.mod  # 最多向下两层
+
+# 3. 绝不执行 Read ../go.mod（向上查找）
+
+提取信息:
   - module 声明（项目名称）
   - go 版本
   - require 中的框架 (gin, echo, fiber)
@@ -91,8 +164,18 @@ Read go.mod
 
 **Python 项目**:
 ```bash
-Read pyproject.toml / requirements.txt / setup.py
-提取:
+# 1. 先尝试读取当前目录的配置文件
+Read ./pyproject.toml
+Read ./requirements.txt
+Read ./setup.py
+
+# 2. 如果当前目录没有，使用 Glob 在子目录查找
+Glob: */pyproject.toml
+Glob: */requirements.txt
+
+# 3. 绝不执行 Read ../pyproject.toml（向上查找）
+
+提取信息:
   - 项目名称、版本
   - requires-python 版本
   - 依赖中的框架 (fastapi, django, flask)
@@ -101,8 +184,18 @@ Read pyproject.toml / requirements.txt / setup.py
 
 **Java 项目**:
 ```bash
-Read pom.xml / build.gradle
-提取:
+# 1. 先尝试读取当前目录的配置文件
+Read ./pom.xml
+Read ./build.gradle
+
+# 2. 如果当前目录没有，使用 Glob 在子目录查找
+Glob: */pom.xml
+Glob: */build.gradle
+Glob: */*/pom.xml  # 最多向下两层（Maven 多模块项目）
+
+# 3. 绝不执行 Read ../pom.xml（向上查找）
+
+提取信息:
   - artifactId / name
   - Java version
   - 依赖中的框架 (spring-boot, micronaut, quarkus)
@@ -110,20 +203,31 @@ Read pom.xml / build.gradle
 
 #### b. 分析项目结构与架构模式
 
-```bash
-# 使用 Glob 检测目录结构
-检测路径:
-  - src/, lib/, pkg/ (源代码)
-  - test/, tests/, __tests__/ (测试)
-  - docs/ (文档)
+**⚠️ 重要原则：只扫描当前目录及子目录，不扫描上级目录**
 
-架构模式推断:
-  - 存在 src/controllers, src/services, src/models → 分层架构（MVC）
-  - 存在 src/api, src/service, src/logic, src/data → 四层架构
-  - 存在 src/components, src/pages → 组件化架构（前端）
-  - 存在 packages/, services/, apps/ → 微服务架构
-  - 存在 functions/, lambda/ → Serverless
-  - 存在 cmd/, internal/, pkg/ → Go 标准布局
+```bash
+# 使用 Glob 检测当前目录下的子目录结构（相对路径）
+检测路径:
+  - ./src/, ./lib/, ./pkg/ (源代码)
+  - ./test/, ./tests/, ./__tests__/ (测试)
+  - ./docs/ (文档)
+
+# 使用相对路径 Glob，确保不会向上查找
+Glob: ./src/**/*
+Glob: ./lib/**/*
+Glob: ./pkg/**/*
+
+# 绝不使用 ../ 向上查找
+# ❌ 错误示例: Glob: ../src/**/*
+# ❌ 错误示例: Read ../src/config.ts
+
+架构模式推断（基于当前目录）:
+  - 存在 ./src/controllers, ./src/services, ./src/models → 分层架构（MVC）
+  - 存在 ./src/api, ./src/service, ./src/logic, ./src/data → 四层架构
+  - 存在 ./src/components, ./src/pages → 组件化架构（前端）
+  - 存在 ./packages/, ./services/, ./apps/ → 微服务架构
+  - 存在 ./functions/, ./lambda/ → Serverless
+  - 存在 ./cmd/, ./internal/, ./pkg/ → Go 标准布局
 ```
 
 #### c. 分析代码风格
@@ -143,8 +247,12 @@ Read pom.xml / build.gradle
 
 #### d. 分析数据存储
 
+**⚠️ 重要原则：只在当前目录及子目录搜索，不搜索上级目录**
+
 ```bash
-# 使用 Grep 搜索数据库相关导入
+# 使用 Grep 搜索数据库相关导入（限定在当前目录）
+# 默认 Grep 只搜索当前目录及子目录，不会向上搜索
+
 关键词:
   - "mysql", "pg", "postgres" → PostgreSQL/MySQL
   - "mongodb", "mongo" → MongoDB
@@ -152,22 +260,47 @@ Read pom.xml / build.gradle
   - "elasticsearch" → Elasticsearch
   - "kafka", "rabbitmq" → 消息队列
 
-# 检查配置文件
-  - docker-compose.yml
-  - .env.example
-  - config/ 目录
+# 检查配置文件（只在当前目录查找）
+Read ./docker-compose.yml
+Read ./.env.example
+Read ./config/database.yml
+
+# 或使用 Glob 在当前目录子目录查找
+Glob: ./config/**/*.yml
+Glob: ./.env*
+
+# 绝不执行：
+# ❌ Read ../docker-compose.yml
+# ❌ Grep 时不指定路径限制
 ```
 
 #### e. 检测模块与层级
 
+**⚠️ 重要原则：只识别当前目录下的模块，不识别上级目录的模块**
+
 **识别所有核心模块**:
 ```bash
-# 使用 Glob 和 Read 识别项目中的所有模块/包
+# 使用 Glob 识别当前目录下的模块/包（相对路径）
+Glob: ./src/controllers/*
+Glob: ./src/services/*
+Glob: ./src/models/*
+Glob: ./src/utils/*
+
+# 或使用更通用的模式
+Glob: ./src/**/*.ts
+Glob: ./src/**/*.go
+Glob: ./src/**/*.py
+Glob: ./src/**/*.java
+
 # 为每个模块记录:
-  - 模块路径
+  - 模块路径（相对于当前目录）
   - 模块类型（Controller, Service, Logic, Model, Utils等）
   - 主要文件列表
   - 依赖关系
+
+# 确保所有路径都是相对于当前目录的
+# 示例：./src/controllers/UserController.ts
+# 而不是：../src/controllers/UserController.ts
 ```
 
 #### f. 记录完整分析结果
@@ -557,7 +690,7 @@ options:
 ```markdown
 # 🏥 Project Doctor 诊断报告
 
-**生成时间**: YYYY-MM-DD HH:MM  
+**生成时间**: YYYY-MM-DD HH:MM
 **项目路径**: [项目路径]  
 **项目类型**: [单项目 / Monorepo]  
 **开发语言**: [语言和版本]  
