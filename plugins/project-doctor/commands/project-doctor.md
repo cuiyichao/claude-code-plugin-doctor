@@ -61,8 +61,11 @@ myproject/
 
 3. **代码搜索**：
    - ✅ `Grep "import" --path ./src/`
-   - ✅ `Grep "mysql"` （默认在当前目录）
-   - ❌ 不指定路径时可能向上搜索
+   - ✅ `Grep "mysql" --path ./` （明确指定当前目录）
+   - ❌ `Grep "mysql"` （不指定路径可能默认行为不明确）
+   - ❌ `Grep "import" --path ../` （向上搜索）
+   
+**重要提示**：所有 `Grep`、`Read`、`Glob` 命令都必须使用 `./` 前缀或明确的相对路径，确保只在当前工作目录及其子目录内操作。
 
 ### 1.1 Monorepo 检测
 
@@ -70,36 +73,41 @@ myproject/
 
 #### a. 检测显式 Monorepo 配置
 
+**⚠️ 只检测当前目录的配置文件，不向上查找**
+
 ```bash
-# 1. 检测 Node.js workspaces
-Read package.json → 检查 workspaces 字段
+# 1. 检测 Node.js workspaces（只读取当前目录）
+Read ./package.json → 检查 workspaces 字段
 
-# 2. 检测 Lerna
-Read lerna.json → 是否存在
+# 2. 检测 Lerna（只读取当前目录）
+Read ./lerna.json → 是否存在
 
-# 3. 检测 Turborepo
-Read turbo.json → 是否存在
+# 3. 检测 Turborepo（只读取当前目录）
+Read ./turbo.json → 是否存在
 
-# 4. 检测 pnpm workspaces
-Read pnpm-workspace.yaml → 是否存在
+# 4. 检测 pnpm workspaces（只读取当前目录）
+Read ./pnpm-workspace.yaml → 是否存在
 ```
 
 #### b. 检测典型目录结构
 
+**⚠️ 只检测当前目录的子目录，不向上或向同级目录查找**
+
 ```bash
-# 检测前后端分离
-Glob: frontend/, backend/
+# 检测前后端分离（只在当前目录下查找）
+Glob: ./frontend/
+Glob: ./backend/
   - 检查是否有独立配置文件
 
-# 检测 packages/apps 结构
-Glob: packages/*/package.json
-Glob: apps/*/package.json
+# 检测 packages/apps 结构（只向下查找）
+Glob: ./packages/*/package.json
+Glob: ./apps/*/package.json
 
-# 检测 Go 多应用结构
-Glob: cmd/* (多个子目录)
+# 检测 Go 多应用结构（只向下查找）
+Glob: ./cmd/* (当前目录下的 cmd 子目录)
 
-# 检测多服务结构
-Glob: services/*/ (多个子目录)
+# 检测多服务结构（只向下查找）
+Glob: ./services/*/ (当前目录下的 services 子目录)
 ```
 
 #### c. 记录检测结果
@@ -232,17 +240,32 @@ Glob: ./pkg/**/*
 
 #### c. 分析代码风格
 
+**⚠️ 重要原则：只读取当前目录及子目录的代码文件**
+
 ```bash
-# 读取 2-3 个代码文件样本
+# 读取 2-3 个代码文件样本（只从当前目录的子目录读取）
+# 使用 Glob 查找代码文件，然后 Read 前几个
+Glob: ./src/**/*.ts    # TypeScript 项目
+Glob: ./src/**/*.go    # Go 项目
+Glob: ./src/**/*.py    # Python 项目
+Glob: ./src/**/*.java  # Java 项目
+
+# 然后 Read 找到的前 2-3 个文件进行代码风格分析
 # 分析命名模式:
   - camelCase (userName, getUserData)
   - PascalCase (UserName, GetUserData)
   - snake_case (user_name, get_user_data)
 
-# 检测 Lint 配置:
-  - .eslintrc.* (JS/TS)
-  - .golangci.yml (Go)
-  - .flake8, pyproject.toml (Python)
+# 检测 Lint 配置（只在当前目录查找）:
+Read ./.eslintrc.js (JS/TS)
+Read ./.eslintrc.json (JS/TS)
+Read ./.golangci.yml (Go)
+Read ./.flake8 (Python)
+Read ./pyproject.toml (Python)
+
+# 绝不执行：
+# ❌ Read ../src/main.ts
+# ❌ Glob: ../**/*.ts
 ```
 
 #### d. 分析数据存储
@@ -250,15 +273,19 @@ Glob: ./pkg/**/*
 **⚠️ 重要原则：只在当前目录及子目录搜索，不搜索上级目录**
 
 ```bash
-# 使用 Grep 搜索数据库相关导入（限定在当前目录）
-# 默认 Grep 只搜索当前目录及子目录，不会向上搜索
+# 使用 Grep 搜索数据库相关导入（必须限定在当前目录）
+# ⚠️ 重要：必须明确指定 --path 参数，限制在当前目录及子目录
 
-关键词:
-  - "mysql", "pg", "postgres" → PostgreSQL/MySQL
-  - "mongodb", "mongo" → MongoDB
-  - "redis" → Redis
-  - "elasticsearch" → Elasticsearch
-  - "kafka", "rabbitmq" → 消息队列
+关键词搜索（必须指定路径）:
+  Grep "mysql" --path ./    → PostgreSQL/MySQL
+  Grep "pg" --path ./       → PostgreSQL
+  Grep "postgres" --path ./ → PostgreSQL
+  Grep "mongodb" --path ./  → MongoDB
+  Grep "mongo" --path ./    → MongoDB
+  Grep "redis" --path ./    → Redis
+  Grep "elasticsearch" --path ./ → Elasticsearch
+  Grep "kafka" --path ./    → 消息队列
+  Grep "rabbitmq" --path ./ → 消息队列
 
 # 检查配置文件（只在当前目录查找）
 Read ./docker-compose.yml
@@ -271,7 +298,8 @@ Glob: ./.env*
 
 # 绝不执行：
 # ❌ Read ../docker-compose.yml
-# ❌ Grep 时不指定路径限制
+# ❌ Grep "mysql" (不指定路径可能向上搜索)
+# ❌ Grep "mysql" --path ../ (向上搜索)
 ```
 
 #### e. 检测模块与层级
