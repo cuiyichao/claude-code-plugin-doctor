@@ -1,11 +1,11 @@
 {
   "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
-  "name": "claude-code-third-party-plugins",
+  "name": "cuiyichao-plugins",
   "version": "1.0.0",
-  "description": "Claude Code 插件市场，包含项目初始化、开发辅助等实用工具",
+  "description": "个人 Claude Code 插件市场，包含 project-doctor 等实用工具",
   "owner": {
-    "name": "Wang Xuecheng",
-    "email": "ahut17353766123@gmail.com"
+    "name": "Cui Yichao",
+    "email": ""
   },
   "plugins": [
     {
