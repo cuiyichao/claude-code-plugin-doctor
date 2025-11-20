@@ -33,24 +33,94 @@ description: 智能分析项目架构，生成规范文档，并深度扫描核�
 
 ```yaml
 question: |
-  请提供您想要诊断的功能点或测试需求。这将帮助我进行精准的代码审查，而不是盲目扫描。
+  请提供您想要诊断的功能点或测试需求。
   
-  您可以提供：
-  1. 具体的功能需求（例如："用户注册时需要发送邮件验证码"）
-  2. 业务流程（例如："订单创建后，扣减库存，发送通知"）
-  3. API 接口要求（例如："POST /api/orders 需要校验库存充足"）
-  4. 测试用例（例如："测试并发下单不会超卖"）
-  5. 已知问题线索（例如："支付回调有时会重复处理"）
+  支持两种方式：
   
-  请输入您的测试需求（支持多行，一行一个需求点）：
+  方式1️⃣ 直接输入（简单快速）：
+    - 具体的功能需求（例如："用户注册时需要发送邮件验证码"）
+    - 业务流程（例如："订单创建后，扣减库存，发送通知"）
+    - API 接口要求（例如："POST /api/orders 需要校验库存充足"）
+    - 测试用例（例如："测试并发下单不会超卖"）
+    - 已知问题线索（例如："支付回调有时会重复处理"）
+  
+  方式2️⃣ 提供测试用例文件路径（结构化）：
+    - 如果您有完整的测试用例文件，可以直接提供文件路径
+    - 支持格式：包含测试用例ID、标题、类型、优先级、测试步骤的文本文件
+    - 例如：./tests/test_cases.txt 或 ./测试用例.txt
+  
+  请选择输入方式：
 
 header: "📋 测试需求收集"
+options:
+  - label: "1️⃣ 直接输入需求点"
+    value: "manual"
+  - label: "2️⃣ 提供测试用例文件"
+    value: "file"
+```
+
+### 0.1.1 处理用户选择
+
+#### 如果用户选择"直接输入需求点"：
+
+```yaml
+question: |
+  请输入您的测试需求（支持多行，一行一个需求点）：
+  
+  示例：
+  - 用户注册时需要发送邮件验证码
+  - 订单创建后，扣减库存，发送通知
+  - POST /api/orders 需要校验库存充足
+
+header: "输入需求点"
 multiline: true
+```
+
+#### 如果用户选择"提供测试用例文件"：
+
+```yaml
+question: |
+  请输入测试用例文件的路径：
+  
+  支持的格式：
+  - 相对路径：./tests/test_cases.txt
+  - 绝对路径：/path/to/test_cases.txt
+  
+  文件格式要求：
+  - 包含测试用例ID（如：TC_REQ001_001）
+  - 包含标题、类型、优先级
+  - 包含测试步骤或描述
+
+header: "测试用例文件路径"
+```
+
+然后读取并解析文件：
+
+```bash
+# 读取用户提供的测试用例文件
+Read [用户提供的文件路径]
+
+# 解析测试用例格式
+识别格式：
+  - 测试用例ID: TC_REQXXX_XXX
+  - 标题: [标题内容]
+  - 类型: FUNCTIONAL / DATA / UI / INTERFACE
+  - 优先级: P0 / P1 / P2 / P3
+  - 描述: [描述内容]
+  - 测试步骤: [步骤列表]
+  - 接口定义: [如有]
+
+# 提取关键信息
+for each 测试用例:
+  - 提取ID、标题、类型、优先级
+  - 从标题和描述中提取关键词
+  - 从测试步骤中提取预期行为
+  - 如果是接口类型，提取API路径和参数
 ```
 
 ### 0.2 解析需求并确认
 
-**将用户输入的需求解析为结构化格式**：
+#### A. 如果是手动输入，解析为简单格式：
 
 ```javascript
 TestRequirements = [
@@ -59,33 +129,119 @@ TestRequirements = [
     title: "用户注册邮件验证",
     description: "用户注册时需要发送邮件验证码",
     type: "功能需求", // 功能需求 | 性能需求 | 安全需求 | 数据一致性
+    priority: "P0",
     keywords: ["注册", "邮件", "验证码"],
-    estimatedEntryPoint: "POST /api/register" // 初步推测的入口
+    estimatedEntryPoint: "POST /api/register", // 初步推测的入口
+    testSteps: []
   },
   {
     id: "REQ-002",
     title: "订单创建流程",
     description: "订单创建后，扣减库存，发送通知",
     type: "业务流程",
+    priority: "P0",
     keywords: ["订单", "库存", "通知"],
-    estimatedEntryPoint: "POST /api/orders"
-  },
-  // ...
+    estimatedEntryPoint: "POST /api/orders",
+    testSteps: []
+  }
 ]
 ```
 
+#### B. 如果是文件输入，解析为详细格式：
+
+**解析示例**（基于用户的测试用例文件）：
+
+```javascript
+TestRequirements = [
+  {
+    id: "TC_REQ004_001",
+    title: "验证生成题目解题思路及板书展示的正确性",
+    originalType: "FUNCTIONAL", // 原始类型
+    type: "功能需求", // 映射后的类型
+    priority: "P0",
+    description: "检查系统生成的解题思路是否清晰，并在板书中正确展示。",
+    keywords: ["题目", "解题思路", "板书", "展示"], // 自动提取
+    testSteps: [
+      "用户输入题目：'求解方程x+3=5'",
+      "系统生成解题思路并展示在板书上",
+      "用户查看板书内容"
+    ],
+    expectedBehavior: "解题思路清晰且板书展示正确",
+    estimatedEntryPoint: null // 需要从代码中定位
+  },
+  {
+    id: "TC_REQ006_001",
+    title: "验证视频封面图与缩略图生成及更新",
+    originalType: "FUNCTIONAL",
+    type: "功能需求",
+    priority: "P0",
+    description: "检查系统是否能够正确生成视频封面图和缩略图，并在更新后同步显示。",
+    keywords: ["视频", "封面图", "缩略图", "生成", "更新"],
+    testSteps: [
+      "用户上传视频：'AI讲题-计算题示例'",
+      "系统生成封面图与缩略图",
+      "用户更新视频内容",
+      "系统重新生成并同步显示更新的封面图与缩略图"
+    ],
+    expectedBehavior: "封面图和缩略图生成正确且更新同步",
+    estimatedEntryPoint: "POST /v1/headImg/generate" // 从接口定义中识别
+  },
+  // 接口层面用例
+  {
+    id: "API_001",
+    title: "POST /playground/api/v1/video/evaluate/getEvaluationByVideoId",
+    originalType: "INTERFACE",
+    type: "接口需求",
+    priority: "P0",
+    description: "视频评估接口",
+    keywords: ["video", "evaluate", "evaluation"],
+    apiPath: "POST /playground/api/v1/video/evaluate/getEvaluationByVideoId",
+    requestExample: {
+      "videoId": "example_video_id",
+      "userId": "example_user_id",
+      "operaClient": "example_opera_client",
+      "origin": "example_origin"
+    },
+    responseExample: {
+      "code": 0,
+      "message": "success",
+      "data": null
+    },
+    estimatedEntryPoint: "/playground/api/v1/video/evaluate/getEvaluationByVideoId"
+  }
+]
+```
+
+**类型映射规则**：
+```javascript
+typeMapping = {
+  "FUNCTIONAL": "功能需求",
+  "DATA": "数据需求",
+  "UI": "界面需求",
+  "INTERFACE": "接口需求",
+  "PERFORMANCE": "性能需求",
+  "SECURITY": "安全需求"
+}
+```
+
 **向用户展示解析结果并确认**：
+
+#### 如果是手动输入：
 
 ```yaml
 question: |
   我已将您的需求解析为以下测试点，请确认：
   
   [REQ-001] 用户注册邮件验证
+  - 类型：功能需求 | 优先级：P0
   - 描述：用户注册时需要发送邮件验证码
+  - 关键词：注册、邮件、验证码
   - 预估入口：POST /api/register
   
   [REQ-002] 订单创建流程
+  - 类型：业务流程 | 优先级：P0
   - 描述：订单创建后，扣减库存，发送通知
+  - 关键词：订单、库存、通知
   - 预估入口：POST /api/orders
   
   是否正确？
@@ -95,6 +251,77 @@ options:
   - label: "✅ 正确，开始诊断"
   - label: "✏️ 需要修改需求"
   - label: "➕ 添加更多需求"
+```
+
+#### 如果是文件输入：
+
+```yaml
+question: |
+  我已从测试用例文件解析出以下测试点，请确认：
+  
+  📊 统计：
+  - 总测试用例数：11 个
+  - 功能用例（FUNCTIONAL）：4 个
+  - 数据用例（DATA）：4 个
+  - 界面用例（UI）：1 个
+  - 接口用例（INTERFACE）：7 个
+  - P0 优先级：7 个
+  - P1 优先级：4 个
+  
+  📋 测试用例清单（前5个）：
+  
+  [TC_REQ004_001] 验证生成题目解题思路及板书展示的正确性
+  - 类型：FUNCTIONAL → 功能需求 | 优先级：P0
+  - 关键词：题目、解题思路、板书、展示
+  - 测试步骤：3 步
+  
+  [TC_REQ006_001] 验证视频封面图与缩略图生成及更新
+  - 类型：FUNCTIONAL → 功能需求 | 优先级：P0
+  - 关键词：视频、封面图、缩略图、生成、更新
+  - 测试步骤：4 步
+  - 相关接口：POST /v1/headImg/generate
+  
+  [TC_REQ008_001] 验证动态教具生成与展示的正确性
+  - 类型：FUNCTIONAL → 功能需求 | 优先级：P1
+  - 关键词：动态教具、线段关系图、展示
+  - 测试步骤：3 步
+  
+  ... 还有 8 个测试用例
+  
+  您想如何继续？
+
+header: "确认测试用例"
+options:
+  - label: "✅ 全部诊断（11 个用例）"
+    value: "all"
+  - label: "🎯 只诊断 P0 用例（7 个）"
+    value: "p0_only"
+  - label: "🎯 只诊断 P1 用例（4 个）"
+    value: "p1_only"
+  - label: "✏️ 手动选择要诊断的用例"
+    value: "manual_select"
+```
+
+**如果用户选择"手动选择"**：
+
+```yaml
+question: |
+  请选择要诊断的测试用例（可多选）：
+
+header: "选择测试用例"
+multiSelect: true
+options:
+  - label: "[P0] TC_REQ004_001 - 验证生成题目解题思路及板书展示"
+    value: "TC_REQ004_001"
+  - label: "[P0] TC_REQ006_001 - 验证视频封面图与缩略图生成"
+    value: "TC_REQ006_001"
+  - label: "[P1] TC_REQ008_001 - 验证动态教具生成与展示"
+    value: "TC_REQ008_001"
+  - label: "[P0] TC_REQ009_001 - 验证Manim动画生成与解题步骤同步"
+    value: "TC_REQ009_001"
+  - label: "[P0] API: POST /playground/api/v1/video/evaluate/getEvaluationByVideoId"
+    value: "API_001"
+  # ... 所有用例
 ```
 
 ### 0.3 输出确认信息
@@ -615,8 +842,9 @@ for each requirement in TestRequirements:
 
 **根据需求类型选择不同的审查重点**：
 
-#### 🎯 策略 A：功能需求验证
+#### 🎯 策略 A：功能需求验证 (FUNCTIONAL)
 *适用：用户注册、订单创建、支付回调等业务功能*
+*对应测试用例类型：FUNCTIONAL*
 
 **审查清单**:
 ```yaml
@@ -705,6 +933,82 @@ for each requirement in TestRequirements:
    - ✅ 外键关系是否一致？
    - ✅ 状态转换是否合法？
    - ✅ 数据校验是否完整？
+```
+
+#### 📊 策略 E：数据需求验证 (DATA) 🆕
+*适用：TTS文本生成、数据格式转换、内容准确性等*
+*对应测试用例类型：DATA*
+
+**审查清单**:
+```yaml
+1. 数据生成:
+   - ✅ 生成的数据是否与源数据一致？
+   - ✅ 数据格式是否正确？
+   - ✅ 是否有数据丢失或错误转换？
+   
+2. 数据验证:
+   - ✅ 生成前是否验证输入数据？
+   - ✅ 生成后是否验证输出数据？
+   - ✅ 异常数据是否有处理？
+   
+3. 数据同步:
+   - ✅ 数据更新是否同步？
+   - ✅ 是否有缓存一致性问题？
+   - ✅ 数据版本是否正确管理？
+```
+
+#### 🎨 策略 F：界面需求验证 (UI) 🆕
+*适用：页面展示、组件渲染、交互逻辑等*
+*对应测试用例类型：UI*
+
+**审查清单**:
+```yaml
+1. 展示逻辑:
+   - ✅ 数据是否正确渲染到界面？
+   - ✅ 空数据是否有兜底展示？
+   - ✅ Loading 状态是否展示？
+   
+2. 交互逻辑:
+   - ✅ 用户操作是否有响应？
+   - ✅ 是否有防抖/节流处理？
+   - ✅ 错误提示是否友好？
+   
+3. 状态管理:
+   - ✅ 组件状态是否正确更新？
+   - ✅ 是否有不必要的重渲染？
+   - ✅ 状态同步是否正确？
+```
+
+#### 🔌 策略 G：接口需求验证 (INTERFACE) 🆕
+*适用：API接口定义、请求/响应格式等*
+*对应测试用例类型：INTERFACE*
+
+**审查清单**:
+```yaml
+1. 接口定义:
+   - ✅ 路由是否正确定义？
+   - ✅ HTTP方法是否正确？
+   - ✅ 接口路径是否符合RESTful规范？
+   
+2. 请求验证:
+   - ✅ 请求参数是否验证？
+   - ✅ 请求体格式是否检查？
+   - ✅ 必填参数是否校验？
+   
+3. 响应格式:
+   - ✅ 响应格式是否统一？
+   - ✅ 错误码是否规范？
+   - ✅ 返回数据是否完整？
+   
+4. 接口实现:
+   - ✅ 接口逻辑是否正确？
+   - ✅ 是否有异常处理？
+   - ✅ 是否有日志记录？
+   
+5. 接口文档一致性:
+   - ✅ 实现是否与文档描述一致？
+   - ✅ 请求示例是否正确？
+   - ✅ 响应示例是否正确？
 ```
 
 ---
