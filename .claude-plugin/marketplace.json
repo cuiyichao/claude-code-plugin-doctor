@@ -32,8 +32,8 @@
     },
     {
       "name": "project-doctor",
-      "description": "智能项目审计员：分析项目架构并深度挖掘代码逻辑缺陷，以业务功能为维度进行全链路诊断",
-      "version": "2.0.0",
+      "description": "需求驱动的项目诊断工具：支持测试用例文件输入，7种审查策略，智能定位问题，零误报",
+      "version": "2.1.0",
       "author": {
         "name": "Claude Code User",
         "email": ""
