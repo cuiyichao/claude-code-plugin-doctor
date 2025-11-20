@@ -3,16 +3,126 @@ allowed-tools: Read, Write, Bash, Glob, Grep, AskUserQuestion
 description: 智能分析项目架构，生成规范文档，并深度扫描核心代码中的功能性 Bug
 ---
 
-# Project Doctor - 项目深度审计
+# Project Doctor - 需求驱动的项目诊断
 
-你是一位资深的技术专家（架构师级别）。你的任务是对当前项目进行“体检”。
-体检分为两个阶段：**Phase 1: 结构与规范分析** 和 **Phase 2: 深度 Bug 挖掘**。
+你是一位资深的技术专家（架构师级别）。你的任务是**基于用户提供的测试需求/功能点**，对项目进行针对性的代码审查。
+
+## 🎯 核心理念
+
+**需求驱动 > 盲目扫描**
+
+传统方式（盲目扫描全部代码）会产生大量误报，用户需要花时间甄别哪些是真问题。
+
+新方式：
+1. 用户提供**明确的测试需求点/功能点**
+2. 插件分析项目架构，定位相关代码
+3. 针对每个需求点，验证实现是否正确
+4. 生成**"需求 vs 实现"的对照诊断报告**
+
+**诊断流程**：用户需求 → 项目分析 → 需求定位 → 针对性审查 → 对照报告
 
 ---
 
-## Phase 1: 智能项目分析与架构建模
+## Phase 0: 收集测试需求 (Requirement Collection) 🆕
 
-采用与 `project-init` 插件相同的深度分析方法，构建完整的项目架构视图。
+**这是诊断的起点，决定了后续的精准度！**
+
+### 0.1 询问用户需求
+
+使用 `AskUserQuestion` 询问用户要测试的功能点：
+
+```yaml
+question: |
+  请提供您想要诊断的功能点或测试需求。这将帮助我进行精准的代码审查，而不是盲目扫描。
+  
+  您可以提供：
+  1. 具体的功能需求（例如："用户注册时需要发送邮件验证码"）
+  2. 业务流程（例如："订单创建后，扣减库存，发送通知"）
+  3. API 接口要求（例如："POST /api/orders 需要校验库存充足"）
+  4. 测试用例（例如："测试并发下单不会超卖"）
+  5. 已知问题线索（例如："支付回调有时会重复处理"）
+  
+  请输入您的测试需求（支持多行，一行一个需求点）：
+
+header: "📋 测试需求收集"
+multiline: true
+```
+
+### 0.2 解析需求并确认
+
+**将用户输入的需求解析为结构化格式**：
+
+```javascript
+TestRequirements = [
+  {
+    id: "REQ-001",
+    title: "用户注册邮件验证",
+    description: "用户注册时需要发送邮件验证码",
+    type: "功能需求", // 功能需求 | 性能需求 | 安全需求 | 数据一致性
+    keywords: ["注册", "邮件", "验证码"],
+    estimatedEntryPoint: "POST /api/register" // 初步推测的入口
+  },
+  {
+    id: "REQ-002",
+    title: "订单创建流程",
+    description: "订单创建后，扣减库存，发送通知",
+    type: "业务流程",
+    keywords: ["订单", "库存", "通知"],
+    estimatedEntryPoint: "POST /api/orders"
+  },
+  // ...
+]
+```
+
+**向用户展示解析结果并确认**：
+
+```yaml
+question: |
+  我已将您的需求解析为以下测试点，请确认：
+  
+  [REQ-001] 用户注册邮件验证
+  - 描述：用户注册时需要发送邮件验证码
+  - 预估入口：POST /api/register
+  
+  [REQ-002] 订单创建流程
+  - 描述：订单创建后，扣减库存，发送通知
+  - 预估入口：POST /api/orders
+  
+  是否正确？
+
+header: "确认测试需求"
+options:
+  - label: "✅ 正确，开始诊断"
+  - label: "✏️ 需要修改需求"
+  - label: "➕ 添加更多需求"
+```
+
+### 0.3 输出确认信息
+
+```
+✅ 测试需求收集完成！
+
+📋 待诊断需求点: 2 个
+  [REQ-001] 用户注册邮件验证
+  [REQ-002] 订单创建流程
+
+🔍 接下来将分析项目架构，定位相关代码...
+```
+
+---
+
+## Phase 1: 快速项目分析与需求定位
+
+**目标**：快速了解项目结构，为每个需求点定位相关代码。
+
+### 1.0 分析策略
+
+**不再全面扫描，而是针对性定位**：
+
+1. **快速识别项目类型**（前端/后端/全栈）
+2. **定位关键目录**（Controller/Service/Model 等）
+3. **基于需求关键词搜索**，定位相关代码
+4. **构建需求到代码的映射关系**
 
 ---
 
@@ -383,299 +493,336 @@ ProjectAnalysis = {
 
 > **输出 1**: 在最终报告的开头，生成一个**标准化的项目架构视图**，包含 ASCII 架构图、详细的模块清单和层级职责说明。
 
-**【交互步骤：确认业务领域】**
-在进入 Phase 2 之前，使用 `AskUserQuestion` 确认你对项目业务领域的理解：
+### 1.7 需求代码定位 🆕
+
+**基于 Phase 0 收集的需求，使用关键词搜索定位相关代码**：
+
+```bash
+# 对每个需求点执行：
+for each requirement in TestRequirements:
+  # 1. 使用关键词在代码中搜索
+  keywords = requirement.keywords
+  
+  # 示例：REQ-001 "用户注册邮件验证"
+  # keywords: ["注册", "邮件", "验证码"]
+  
+  Grep "register" --path ./src/ -i
+  Grep "email" --path ./src/ -i
+  Grep "verification" --path ./src/ -i
+  Grep "code" --path ./src/ -i
+  
+  # 2. 识别相关文件
+  relatedFiles = [找到的文件列表]
+  
+  # 3. 如果有 API 路径，尝试定位 Controller
+  if requirement.estimatedEntryPoint:
+    # 例如：POST /api/register
+    Grep "\/api\/register" --path ./src/ -i
+    Grep "register.*route" --path ./src/ -i
+  
+  # 4. 记录映射关系
+  requirement.relatedCode = {
+    entryPoint: "src/controllers/AuthController.ts:registerUser()",
+    relatedFiles: [
+      "src/controllers/AuthController.ts",
+      "src/services/AuthService.ts",
+      "src/services/EmailService.ts",
+      "src/models/User.ts"
+    ],
+    callChain: [
+      "AuthController.registerUser()",
+      "→ AuthService.createUser()",
+      "→ EmailService.sendVerificationCode()",
+      "→ UserRepository.create()"
+    ]
+  }
+```
+
+**【交互步骤：确认需求定位结果】**
 
 ```yaml
-question: "基于目录结构，我识别出本项目包含以下核心业务领域 (Business Domains)。这有助于我后续识别具体功能。请确认："
-header: "业务领域识别"
-multiSelect: true
+question: |
+  我已为每个需求定位了相关代码，请确认：
+  
+  [REQ-001] 用户注册邮件验证
+  📍 入口: src/controllers/AuthController.ts:registerUser()
+  🔗 调用链:
+    → AuthController.registerUser()
+    → AuthService.createUser()
+    → EmailService.sendVerificationCode()
+    → UserRepository.create()
+  📂 涉及文件: 4 个
+  
+  [REQ-002] 订单创建流程
+  📍 入口: src/controllers/OrderController.ts:createOrder()
+  🔗 调用链:
+    → OrderController.createOrder()
+    → OrderService.create()
+    → InventoryService.deduct()
+    → NotificationService.send()
+  📂 涉及文件: 6 个
+  
+  是否正确？如果有遗漏或错误，我会重新定位。
+
+header: "需求代码定位结果"
 options:
-  - label: "📦 [领域1] (例如：Order Management)"
-    description: "主要路径: src/modules/order"
-  - label: "👤 [领域2] (例如：User System)"
-    description: "主要路径: src/modules/user"
-  - label: "🔧 [领域3] (例如：Inventory)"
-    description: "主要路径: src/modules/inventory"
-  - label: "✏️ 补充/修正"
-    description: "识别不准，我要手动补充核心领域路径"
+  - label: "✅ 正确，开始针对性审查"
+    value: "confirm"
+  - label: "❌ [REQ-001] 定位错误，需要调整"
+    value: "adjust_req_001"
+  - label: "❌ [REQ-002] 定位错误，需要调整"
+    value: "adjust_req_002"
+  - label: "✏️ 手动指定文件路径"
+    value: "manual"
+```
+
+### 1.8 输出定位结果
+
+```
+✅ 需求代码定位完成！
+
+📊 定位统计:
+  - 需求点: 2 个
+  - 入口函数: 2 个
+  - 相关文件: 10 个
+  - 预计代码行数: ~1,200 行
+
+🔬 接下来将对每个需求进行针对性审查...
 ```
 
 ---
 
-## Phase 2: 按模块深度诊断 (Module-Based Deep Analysis)
+## Phase 2: 按需求针对性审查 (Requirement-Driven Validation) 🆕
 
-这是你的核心价值所在。基于 Phase 1 识别的模块和架构，**按模块进行系统化、深度的代码分析**。
+**这是核心价值所在！不再盲目扫描，而是针对每个需求点，验证实现是否正确。**
 
-### 2.1 诊断策略分流
+### 2.0 诊断策略
 
-根据 Phase 1 识别的 `Language` 和 `Framework`，选择诊断策略：
-
-#### 🅰️ 策略 A：前端项目 (Frontend Focus)
-*适用：React, Vue, Angular, Next.js, Flutter, Android, iOS 等*
-
-**核心关注点 (User Interaction & State)**:
-1.  **交互与状态管理**:
-    - 状态更新是否会导致不必要的重渲染？(React.memo, useMemo)
-    - 异步操作（API 调用）是否有 Loading/Error 状态处理？
-    - 复杂表单的状态同步问题。
-2.  **组件设计**:
-    - Props 透传层级是否过深（Prop Drilling）？
-    - Hooks 依赖项是否完整（useEffect deps）？
-3.  **API 集成**:
-    - 接口调用的异常捕获（try-catch / Promise.catch）。
-    - 敏感数据是否暴露在前端？
-
-#### 🅱️ 策略 B：后端项目 (Backend Focus)
-*适用：Node.js API, Go (Gin/Echo), Python (FastAPI/Django), Java (Spring) 等*
-
-**核心关注点 (API & Logic & Data)**:
-1.  **接口与参数**:
-    - 入参校验是否严谨？（防止 SQL 注入、越权）
-    - 响应格式是否统一？
-2.  **业务逻辑**:
-    - 事务一致性（ACID）：多步数据库操作是否在同一事务中？
-    - 并发控制：是否存在竞态条件（Race Condition）？
-    - 异常处理：是否吞掉了底层异常？日志是否关键信息缺失？
-3.  **性能隐患**:
-    - 循环内的数据库查询（N+1 问题）。
-    - 未关闭的资源（文件流、连接池）。
-
-#### 🆎 策略 C：全栈/混合项目
-*适用：Monorepo, Serverless 等*
-- 分别对前端目录应用策略 A，对后端目录应用策略 B。
-
----
-
-### 2.2 按模块系统化诊断
-
-**核心原则**: 对 Phase 1 识别的每个模块进行**独立且深度**的分析。
-
-#### 诊断流程
-
-对于 ProjectAnalysis.modules 中的每个模块：
+**对每个需求点执行以下审查**：
 
 ```javascript
-// 遍历所有模块
-for each module in ProjectAnalysis.modules:
-  1. 读取模块所有文件
-  2. 分析模块职责是否清晰
-  3. 检查模块内代码质量
-  4. 分析模块间依赖关系
-  5. 记录发现的问题
-```
-
-#### Step 1: 模块级分析
-
-**对于每个模块执行以下检查**：
-
-**A. 职责分析** (根据模块类型):
-```yaml
-Controller 层:
-  ✅ 应该做:
-    - 接收和校验请求参数
-    - 调用 Service 层处理业务
-    - 返回统一格式的响应
-  ❌ 不应该做:
-    - 包含复杂业务逻辑
-    - 直接操作数据库
-    - 处理数据转换（应在 Service 层）
-
-Service 层:
-  ✅ 应该做:
-    - 实现核心业务逻辑
-    - 协调多个 Repository/Model
-    - 处理事务边界
-  ❌ 不应该做:
-    - 处理 HTTP 请求细节
-    - 直接构造 SQL 语句
-    - 包含表现层逻辑
-
-Model/Repository 层:
-  ✅ 应该做:
-    - 数据访问和持久化
-    - 数据验证和转换
-    - 封装数据库操作
-  ❌ 不应该做:
-    - 包含业务逻辑
-    - 调用其他 Service
-    - 处理 HTTP 相关逻辑
-
-Utils 层:
-  ✅ 应该做:
-    - 提供通用工具函数
-    - 无状态、可复用
-  ❌ 不应该做:
-    - 包含业务逻辑
-    - 依赖特定模块
-```
-
-**B. 代码质量检查**:
-```bash
-# 对模块内每个文件执行:
-1. 错误处理:
-   - 是否有异常捕获？
-   - 错误是否正确传播？
-   - 日志是否完整？
-
-2. 数据验证:
-   - 入参是否验证？
-   - 边界条件是否处理？
-   - 空值是否检查？
-
-3. 资源管理:
-   - 数据库连接是否关闭？
-   - 文件流是否关闭？
-   - 是否有内存泄漏风险？
-
-4. 性能问题:
-   - 是否有 N+1 查询？
-   - 循环内是否有重复操作？
-   - 是否有不必要的数据复制？
-
-5. 安全问题:
-   - 是否有 SQL 注入风险？
-   - 是否有 XSS 风险？
-   - 敏感数据是否加密？
-```
-
-**C. 依赖关系分析**:
-```bash
-# 检查模块间调用是否合理
-1. 分层合规性:
-   - Controller 是否直接调用 Model？（违规）
-   - Service 是否调用 Controller？（违规）
-   - 是否存在循环依赖？（严重问题）
-
-2. 耦合度分析:
-   - 模块间依赖是否过多？
-   - 是否可以解耦？
-```
-
-#### Step 2: 识别核心业务功能
-
-基于模块分析结果，识别核心业务功能：
-
-**后端项目** - 从 Controller 层识别：
-```bash
-# 分析 Controller 层的所有文件
-# 提取所有 API 端点和对应的业务功能
-
-示例:
-  - POST /api/orders → "创建订单"
-  - POST /api/payments/callback → "支付回调"
-  - GET /api/reports → "生成报表"
-```
-
-**前端项目** - 从 Pages/Components 识别：
-```bash
-# 分析页面组件和关键交互
-
-示例:
-  - LoginForm.tsx → "用户登录"
-  - CheckoutPage.tsx → "购物车结算"
-  - Dashboard.tsx → "数据仪表盘"
-```
-
-#### Step 3: 功能确认交互
-
-向用户展示识别出的**业务功能列表**：
-
-```yaml
-question: "基于模块分析，我识别出以下核心业务功能。请选择您希望重点诊断的功能（全链路分析）："
-header: "核心功能诊断"
-multiSelect: true
-options:
-  - label: "🛒 创建订单 (POST /api/orders)"
-    description: "涉及: OrderController → OrderService → OrderRepository, InventoryService"
-  - label: "💳 支付回调 (POST /api/payments/callback)"
-    description: "涉及: PaymentController → PaymentService → OrderService"
-  - label: "📊 生成报表 (GET /api/reports)"
-    description: "涉及: ReportController → ReportService → Multiple Repositories"
-  - label: "✏️ 手动指定功能"
-    description: "由我输入要诊断的功能名称或入口文件"
+for each requirement in TestRequirements:
+  1. 读取相关代码文件
+  2. 理解需求预期行为
+  3. 验证实现是否符合需求
+  4. 识别潜在问题（逻辑漏洞、边界情况、异常处理等）
+  5. 记录"需求 vs 实现"的对比结果
 ```
 
 ---
 
-### 2.3 全链路功能诊断
+### 2.1 需求类型诊断策略
 
-对于用户选中的每个功能，执行**完整调用链分析**：
+**根据需求类型选择不同的审查重点**：
 
-#### Step 1: 构建调用链
+#### 🎯 策略 A：功能需求验证
+*适用：用户注册、订单创建、支付回调等业务功能*
 
-```bash
-1. 读取入口代码 (Controller/Page)
-2. 分析函数调用和依赖导入
-3. 递归追踪所有相关代码:
-   - 入口 → Service → Repository/Model
-   - 包含所有分支调用
-4. 记录完整调用链路
+**审查清单**:
+```yaml
+1. 功能完整性:
+   - ✅ 需求描述的所有步骤是否都实现了？
+   - ✅ 是否有缺失的逻辑分支？
+   
+2. 参数验证:
+   - ✅ 必填参数是否验证？
+   - ✅ 数据类型是否检查？
+   - ✅ 边界条件是否处理？（空值、负数、超长等）
+   
+3. 错误处理:
+   - ✅ 异常是否被捕获？
+   - ✅ 错误信息是否友好？
+   - ✅ 日志是否记录关键信息？
+   
+4. 返回结果:
+   - ✅ 返回数据是否完整？
+   - ✅ 格式是否符合约定？
+
+5. 副作用验证:
+   - ✅ 数据库操作是否正确？
+   - ✅ 第三方调用是否有fallback？
+   - ✅ 通知/消息是否发送？
 ```
 
-#### Step 2: 跨层级逻辑分析
+#### ⚡ 策略 B：性能需求验证
+*适用：并发处理、大数据查询、实时响应等*
 
-**在完整上下文中寻找跨文件的逻辑 Bug**：
-
-**A. 数据流完整性**:
-```bash
-检查点:
-  - 参数在层级传递中是否丢失？
-  - 数据类型转换是否正确？
-  - 必填字段是否被正确传递？
-
-示例问题:
-  ❌ Controller 传递了 userId，但 Service 没有使用
-  ❌ Service 返回了 error，但 Controller 没有处理
+**审查清单**:
+```yaml
+1. 查询效率:
+   - ✅ 是否有 N+1 查询？
+   - ✅ 是否有不必要的全表扫描？
+   - ✅ 索引是否合理？
+   
+2. 资源管理:
+   - ✅ 连接池是否复用？
+   - ✅ 资源是否及时释放？
+   - ✅ 是否有内存泄漏风险？
+   
+3. 并发控制:
+   - ✅ 是否有锁保护共享资源？
+   - ✅ 锁粒度是否合理？
+   - ✅ 是否有死锁风险？
 ```
 
-**B. 信任边界问题**:
-```bash
-检查点:
-  - 谁负责参数校验？
-  - 谁负责权限检查？
-  - 是否存在"都以为对方验证了"的问题？
+#### 🔒 策略 C：安全需求验证
+*适用：权限控制、数据加密、防注入等*
 
-示例问题:
-  ❌ Controller 假设 Service 会验证参数
-  ❌ Service 假设 Controller 已经验证参数
-  → 结果：没有任何验证
+**审查清单**:
+```yaml
+1. 输入安全:
+   - ✅ 是否防止 SQL 注入？
+   - ✅ 是否防止 XSS 攻击？
+   - ✅ 是否防止 CSRF 攻击？
+   
+2. 权限控制:
+   - ✅ 是否验证用户身份？
+   - ✅ 是否检查操作权限？
+   - ✅ 是否防止越权访问？
+   
+3. 敏感数据:
+   - ✅ 密码是否加密存储？
+   - ✅ 敏感信息是否脱敏？
+   - ✅ 日志是否包含敏感数据？
 ```
 
-**C. 事务一致性**:
-```bash
-检查点:
-  - 多个数据库操作是否在同一事务中？
-  - 失败时数据是否会回滚？
-  - 是否有部分成功的风险？
+#### 💾 策略 D：数据一致性验证
+*适用：事务处理、分布式操作、数据同步等*
 
-示例问题:
-  ❌ 扣减库存后，创建订单失败，库存未回滚
-  ❌ 更新了订单状态，但发送通知失败，无补偿机制
+**审查清单**:
+```yaml
+1. 事务边界:
+   - ✅ 多个数据库操作是否在同一事务中？
+   - ✅ 失败时是否会回滚？
+   - ✅ 事务隔离级别是否合理？
+   
+2. 并发安全:
+   - ✅ 是否有竞态条件？
+   - ✅ 乐观锁/悲观锁是否正确使用？
+   - ✅ 幂等性是否保证？
+   
+3. 数据完整性:
+   - ✅ 外键关系是否一致？
+   - ✅ 状态转换是否合法？
+   - ✅ 数据校验是否完整？
 ```
 
-**D. 错误传播路径**:
-```bash
-检查点:
-  - 底层异常是否被正确捕获？
-  - 错误信息是否被吞掉？
-  - 日志是否记录关键信息？
+---
 
-示例问题:
-  ❌ Repository 抛出异常，Service catch 后没有处理
-  ❌ Service 返回 error，Controller 没有记录日志
+### 2.2 按需求逐个审查 🆕
+
+**核心原则**: 对每个需求点进行**针对性验证**，避免误报。
+
+#### 审查流程
+
+对于 TestRequirements 中的每个需求：
+
+```javascript
+// 遍历所有需求
+for each requirement in TestRequirements:
+  1. 读取需求相关的所有代码文件
+  2. 理解需求的预期行为
+  3. 根据需求类型选择审查策略（A/B/C/D）
+  4. 验证实现是否符合需求
+  5. 识别潜在问题和风险
+  6. 记录"需求 vs 实现"的对比结果
 ```
 
-**E. 并发安全**:
-```bash
-检查点:
-  - 是否存在竞态条件？
-  - 共享资源是否有锁保护？
-  - 是否有幂等性保证？
+#### 审查示例
 
-示例问题:
-  ❌ 多个请求同时扣减库存，可能超卖
-  ❌ 重复支付回调，订单状态被重复更新
+**需求：[REQ-001] 用户注册邮件验证**
+
+```bash
+# Step 1: 读取相关代码
+Read src/controllers/AuthController.ts
+Read src/services/AuthService.ts
+Read src/services/EmailService.ts
+Read src/models/User.ts
+
+# Step 2: 理解需求预期行为
+需求描述：用户注册时需要发送邮件验证码
+
+预期流程：
+  1. 用户提交注册信息（邮箱、密码）
+  2. 验证邮箱格式和密码强度
+  3. 生成验证码
+  4. 发送验证邮件
+  5. 创建用户记录（状态：未验证）
+  6. 返回成功响应
+
+# Step 3: 选择审查策略
+类型：功能需求 → 使用策略 A
+
+# Step 4: 验证实现
+审查清单：
+  ✅ 参数验证
+    - [检查] AuthController 是否验证邮箱格式？
+    - [检查] 是否验证密码强度？
+    - [检查] 是否验证邮箱唯一性？
+  
+  ✅ 核心逻辑
+    - [检查] 是否生成验证码？
+    - [检查] 是否调用 EmailService.send()?
+    - [检查] 是否创建用户记录？
+    - [检查] 用户状态是否设置为"未验证"？
+  
+  ✅ 错误处理
+    - [检查] 邮件发送失败时如何处理？
+    - [检查] 数据库写入失败时如何处理？
+  
+  ✅ 边界情况
+    - [检查] 重复注册如何处理？
+    - [检查] 邮箱为空如何处理？
+
+# Step 5: 识别潜在问题
+
+发现的问题：
+  🔴 [Critical] AuthController.register() 没有验证邮箱格式
+    位置：src/controllers/AuthController.ts:45
+    风险：可以注册非法邮箱地址
+  
+  🟠 [High] EmailService.send() 失败时没有回滚用户创建
+    位置：src/services/AuthService.ts:78
+    风险：用户已创建但未收到验证邮件，无法激活
+  
+  🟡 [Medium] 验证码未设置过期时间
+    位置：src/services/AuthService.ts:82
+    风险：验证码可能被长期使用
+
+# Step 6: 记录对比结果
+RequirementValidationResult = {
+  requirementId: "REQ-001",
+  title: "用户注册邮件验证",
+  overallStatus: "部分实现", // 完全实现 | 部分实现 | 未实现 | 实现错误
+  implementationScore: 70, // 0-100
+  issues: [
+    { severity: "Critical", description: "..." },
+    { severity: "High", description: "..." },
+    { severity: "Medium", description: "..." }
+  ],
+  missingFeatures: ["邮箱格式验证", "失败回滚机制"],
+  recommendations: [...]
+}
+```
+
+### 2.3 审查进度展示
+
+在审查过程中，实时显示进度：
+
+```
+🔬 正在按需求进行针对性审查...
+
+[1/2] 审查 REQ-001: 用户注册邮件验证
+  📂 读取代码文件 (4 个)...
+  🔍 验证功能完整性...
+  ⚠️  发现 3 个问题 (🔴 1 | 🟠 1 | 🟡 1)
+
+[2/2] 审查 REQ-002: 订单创建流程
+  📂 读取代码文件 (6 个)...
+  🔍 验证数据一致性...
+  ⚠️  发现 2 个问题 (🔴 1 | 🟠 1)
+
+✅ 审查完成！共发现 5 个问题。
 ```
 
 ---
@@ -686,66 +833,80 @@ options:
 
 ```yaml
 严重等级:
-  - [Critical] 严重: 可能导致数据丢失、安全漏洞、系统崩溃
-    示例: SQL注入、事务不一致、内存泄漏
+  - [Critical] 严重: 可能导致数据丢失、安全漏洞、系统崩溃、需求完全无法满足
+    示例: SQL注入、事务不一致、核心功能未实现
   
-  - [High] 高: 影响核心功能，可能导致业务错误
-    示例: 参数未验证、错误未处理、并发问题
+  - [High] 高: 影响需求实现，可能导致业务错误或功能不完整
+    示例: 参数未验证、错误未处理、边界情况缺失
   
-  - [Medium] 中: 影响代码质量，可能影响性能或维护性
-    示例: N+1查询、代码重复、耦合度高
+  - [Medium] 中: 需求基本实现，但有改进空间
+    示例: 性能问题、代码重复、日志不足
   
-  - [Low] 低: 代码风格或最佳实践问题
-    示例: 命名不规范、注释缺失、日志不足
+  - [Low] 低: 代码风格或最佳实践问题，不影响需求实现
+    示例: 命名不规范、注释缺失
 
 问题分类:
-  - 🔒 安全问题 (Security)
-  - 💾 数据一致性 (Data Consistency)
+  - ❌ 需求未实现 (Missing Feature)
   - 🐛 逻辑错误 (Logic Bug)
+  - 🔒 安全风险 (Security)
+  - 💾 数据一致性 (Data Consistency)
   - ⚡ 性能问题 (Performance)
-  - 🏗️ 架构问题 (Architecture)
   - 📝 代码质量 (Code Quality)
 ```
 
 ---
 
-## Phase 3: 生成详细诊断报告
+## Phase 3: 生成"需求 vs 实现"对照报告 🆕
 
-分析完成后，在根目录生成一份名为 `PROJECT_DIAGNOSIS.md` 的详细报告。
+分析完成后，在根目录生成一份名为 `REQUIREMENT_VALIDATION_REPORT.md` 的详细对照报告。
+
+**核心理念**：以需求为维度，展示每个需求的实现情况和问题。
 
 **报告模板：**
 
 ```markdown
-# 🏥 Project Doctor 诊断报告
+# 📋 需求验证报告 (Requirement Validation Report)
 
-**生成时间**: YYYY-MM-DD HH:MM
+**生成时间**: YYYY-MM-DD HH:MM  
 **项目路径**: [项目路径]  
 **项目类型**: [单项目 / Monorepo]  
 **开发语言**: [语言和版本]  
 **主要框架**: [框架名称和版本]  
-**健康度评分**: [0-100] / 100
 
 ---
 
 ## 📊 执行摘要
 
-### 诊断统计
-- **扫描模块数**: [数量] 个
-- **扫描文件数**: [数量] 个
-- **代码行数**: 约 [数量] 行
-- **发现问题数**: [数量] 个
-  - 🔴 Critical: [数量]
-  - 🟠 High: [数量]
-  - 🟡 Medium: [数量]
-  - 🟢 Low: [数量]
+### 需求验证统计
 
-### 问题分类统计
-- 🔒 安全问题: [数量]
-- 💾 数据一致性: [数量]
-- 🐛 逻辑错误: [数量]
-- ⚡ 性能问题: [数量]
-- 🏗️ 架构问题: [数量]
-- 📝 代码质量: [数量]
+| 指标 | 数量 | 占比 |
+|------|------|------|
+| 📋 总需求数 | [数量] | 100% |
+| ✅ 完全实现 | [数量] | [百分比]% |
+| ⚠️ 部分实现 | [数量] | [百分比]% |
+| ❌ 未实现/实现错误 | [数量] | [百分比]% |
+
+### 问题统计
+
+| 严重程度 | 数量 | 说明 |
+|---------|------|------|
+| 🔴 Critical | [数量] | 可能导致需求完全无法满足 |
+| 🟠 High | [数量] | 影响需求实现，功能不完整 |
+| 🟡 Medium | [数量] | 需求基本实现，有改进空间 |
+| 🟢 Low | [数量] | 代码风格问题，不影响需求 |
+
+**总问题数**: [数量] 个
+
+### 问题分类
+
+| 类别 | 数量 |
+|------|------|
+| ❌ 需求未实现 | [数量] |
+| 🐛 逻辑错误 | [数量] |
+| 🔒 安全风险 | [数量] |
+| 💾 数据一致性 | [数量] |
+| ⚡ 性能问题 | [数量] |
+| 📝 代码质量 | [数量] |
 
 ---
 
