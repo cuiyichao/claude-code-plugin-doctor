@@ -38,18 +38,64 @@ description: 智能分析项目架构，生成规范文档，并深度扫描核�
 
 ---
 
-## Phase 0: 收集测试需求 (Requirement Collection) ⭐ 必须第一步执行
+## Phase 0: 选择诊断模式 ⭐ 必须第一步执行
 
 **⚠️ 这是诊断的起点，必须第一步执行，决不可跳过！**
 
-**执行顺序约束**：
-1. ✅ 必须先执行 Phase 0 收集需求
-2. ❌ 不可先分析项目再让用户提供需求
-3. ❌ 不可自动识别"核心功能"替代用户需求
+### 0.1 询问用户选择诊断模式
 
-**如果用户没有提供需求，必须先询问！**
+使用 `AskUserQuestion` 询问用户选择诊断模式：
 
-### 0.1 询问用户需求
+```yaml
+question: |
+  请选择诊断模式：
+  
+  🎯 模式1: 需求驱动诊断（推荐，精准无误报）
+     - 你提供明确的测试需求或功能点
+     - 插件针对性检查这些需求的实现
+     - 优点：精准、无误报、报告清晰、快速
+     - 适用场景：
+       ✓ 功能验证（检查某个功能是否正确实现）
+       ✓ Bug 排查（针对已知问题线索定位）
+       ✓ 测试用例验证（基于测试用例检查代码）
+       ✓ API 接口测试（验证接口实现是否符合要求）
+  
+  🔍 模式2: 全链路诊断（全面，按模块扫描）
+     - 插件自动分析项目架构
+     - 识别核心业务功能模块（Controller、Service、Model等）
+     - 对每个模块进行深度健康扫描
+     - 优点：全面、发现未知问题、适合代码审查
+     - 适用场景：
+       ✓ 项目质量评估
+       ✓ 代码健康度检查
+       ✓ 重构前的风险评估
+       ✓ 不确定问题在哪，需要全面扫描
+  
+  请选择：
+
+header: "🏥 Project Doctor - 诊断模式选择"
+options:
+  - label: "🎯 模式1: 需求驱动诊断（推荐）"
+    value: "requirement-driven"
+  - label: "🔍 模式2: 全链路诊断（按模块）"
+    value: "full-scan"
+```
+
+### 0.2 根据模式执行不同流程
+
+#### 如果用户选择 "需求驱动诊断"：
+
+继续执行 **Phase 0-A: 收集测试需求**
+
+#### 如果用户选择 "全链路诊断"：
+
+跳转到 **Phase 0-B: 全链路诊断流程**，然后直接执行 Phase 1 和 Phase 2 的全链路版本
+
+---
+
+## Phase 0-A: 收集测试需求（需求驱动模式）
+
+### 0-A.1 询问需求输入方式
 
 使用 `AskUserQuestion` 询问用户要测试的功能点：
 
@@ -81,7 +127,7 @@ options:
     value: "file"
 ```
 
-### 0.1.1 处理用户选择
+### 0-A.1.1 处理用户选择
 
 #### 如果用户选择"直接输入需求点"：
 
@@ -140,7 +186,7 @@ for each 测试用例:
   - 如果是接口类型，提取API路径和参数
 ```
 
-### 0.2 解析需求并确认
+### 0-A.2 解析需求并确认
 
 #### A. 如果是手动输入，解析为简单格式：
 
@@ -346,7 +392,7 @@ options:
   # ... 所有用例
 ```
 
-### 0.3 输出确认信息
+### 0-A.3 输出确认信息
 
 ```
 ✅ 测试需求收集完成！
@@ -358,9 +404,45 @@ options:
 🔍 接下来将分析项目架构，定位相关代码...
 ```
 
+**执行：继续执行 Phase 1-A（需求驱动模式）**
+
 ---
 
-## Phase 1: 快速项目分析与需求代码定位（仅定位，不诊断）
+## Phase 0-B: 全链路诊断流程（全链路模式）
+
+**⚠️ 只有用户在 Phase 0 选择了"全链路诊断"才执行此流程**
+
+### 0-B.1 全链路诊断说明
+
+```
+🔍 全链路诊断模式
+
+将对项目进行全面健康检查：
+1. 分析项目架构和目录结构
+2. 识别核心业务功能模块
+3. 对每个模块进行深度扫描
+4. 生成模块级健康诊断报告
+
+预计耗时：视项目规模而定（通常 5-15 分钟）
+
+📌 开始分析...
+```
+
+### 0-B.2 执行流程
+
+**执行：直接跳转到 Phase 1-B（全链路模式）进行项目分析**
+
+---
+
+## Phase 1: 项目分析与代码定位
+
+**根据 Phase 0 选择的模式执行不同流程：**
+- **需求驱动模式** → Phase 1-A（快速定位需求相关代码）
+- **全链路模式** → Phase 1-B（全面分析项目架构和模块）
+
+---
+
+## Phase 1-A: 快速项目分析与需求代码定位（需求驱动模式）
 
 **⚠️⚠️⚠️ 严禁以下行为（违反则视为严重错误）⚠️⚠️⚠️**
 
@@ -770,47 +852,221 @@ ProjectInfo = {
 // ⚠️ 直接进入 1.7 需求代码定位
 ```
 
-### 1.7 需求代码定位 🆕
+### 1.7 需求代码定位 🆕（精准定位策略）
 
-**基于 Phase 0 收集的需求，使用关键词搜索定位相关代码**：
+**基于 Phase 0 收集的需求，使用多策略精准定位相关代码**：
+
+#### Step 1: 多关键词组合搜索
 
 ```bash
 # 对每个需求点执行：
 for each requirement in TestRequirements:
-  # 1. 使用关键词在代码中搜索
-  keywords = requirement.keywords
   
-  # 示例：REQ-001 "用户注册邮件验证"
-  # keywords: ["注册", "邮件", "验证码"]
+  # ━━━ 策略 1: 提取多维度关键词 ━━━
   
-  Grep "register" --path ./src/ -i
-  Grep "email" --path ./src/ -i
-  Grep "verification" --path ./src/ -i
-  Grep "code" --path ./src/ -i
+  # 1.1 业务关键词（从需求描述提取）
+  businessKeywords = ["注册", "邮件", "验证"]  # 中文
+  technicalKeywords = ["register", "email", "verification", "code"]  # 英文
   
-  # 2. 识别相关文件
-  relatedFiles = [找到的文件列表]
+  # 1.2 API/路径关键词
+  apiKeywords = ["/api/register", "/api/user", "POST"]
   
-  # 3. 如果有 API 路径，尝试定位 Controller
+  # 1.3 实体/模型关键词
+  entityKeywords = ["User", "UserModel", "Account"]
+  
+  # ━━━ 策略 2: 组合搜索（提高精度） ━━━
+  
+  # 2.1 精准搜索：多个关键词同时出现在同一文件中
+  # 示例：查找同时包含 "register" 和 "email" 的文件
+  Grep "register" --path ./src/ -i | 记录文件列表 A
+  Grep "email" --path ./src/ -i | 记录文件列表 B
+  
+  # 取交集：同时包含两个关键词的文件
+  highRelevanceFiles = A ∩ B
+  
+  # 2.2 扩展搜索：包含任一关键词的文件
+  Grep "register|email|verification" --path ./src/ -i
+  
+  # 2.3 API 路径搜索（如果有）
   if requirement.estimatedEntryPoint:
-    # 例如：POST /api/register
+    # 路径定义搜索
     Grep "\/api\/register" --path ./src/ -i
-    Grep "register.*route" --path ./src/ -i
+    Grep "@Post.*register" --path ./src/ -i
+    Grep "router\.(post|get).*register" --path ./src/ -i
   
-  # 4. 记录映射关系
+  # 2.4 函数名搜索
+  Grep "function.*register" --path ./src/ -i
+  Grep "registerUser|createUser|signUp" --path ./src/ -i
+```
+
+#### Step 2: 识别入口点（Controller/Handler）
+
+```bash
+  # ━━━ 策略 3: 定位入口函数 ━━━
+  
+  # 3.1 根据文件名模式识别
+  prioritizeFiles = [
+    "*Controller*",    # Controller 层
+    "*Handler*",       # Handler 层
+    "*Route*",         # 路由定义
+    "*API*"            # API 层
+  ]
+  
+  # 3.2 在候选文件中查找函数定义
+  for file in highRelevanceFiles:
+    Read file
+    
+    # 查找符合需求的函数：
+    # - 函数名包含关键词
+    # - 函数上有路由装饰器
+    # - 函数参数包含 request/response
+    
+    识别入口函数:
+      - src/controllers/AuthController.ts:registerUser()
+      - 或 src/routes/user.ts:handleRegister()
+```
+
+#### Step 3: 依赖分析（构建调用链）
+
+```bash
+  # ━━━ 策略 4: 分析 import/依赖关系 ━━━
+  
+  # 4.1 从入口文件开始分析导入
+  Read entryFile (如: src/controllers/AuthController.ts)
+  
+  # 提取 import 语句:
+  Grep "^import.*from" --path entryFile
+  # 结果示例:
+  #   import { AuthService } from '@/services/AuthService';
+  #   import { EmailService } from '@/services/EmailService';
+  #   import { User } from '@/models/User';
+  
+  # 4.2 定位依赖文件的实际路径
+  resolvedPaths = [
+    "src/services/AuthService.ts",
+    "src/services/EmailService.ts",
+    "src/models/User.ts"
+  ]
+  
+  # 4.3 在入口函数中查找实际调用
+  在 registerUser() 函数体内搜索:
+    - authService.createUser()
+    - emailService.sendEmail()
+    - userRepo.save()
+  
+  # 4.4 递归分析依赖的依赖
+  for each dependencyFile in resolvedPaths:
+    Read dependencyFile
+    提取该文件中的关键函数
+    分析这些函数又调用了哪些服务
+```
+
+#### Step 4: 构建完整调用链
+
+```bash
+  # ━━━ 策略 5: 追踪完整调用路径 ━━━
+  
+  callChain = []
+  
+  # 5.1 起点：Controller/Handler
+  callChain.push("AuthController.registerUser()")
+  
+  # 5.2 读取函数体，识别调用
+  在 registerUser() 中发现:
+    const user = await this.authService.createUser(data);
+    → 添加: "AuthService.createUser()"
+    
+  # 5.3 继续追踪 AuthService.createUser()
+  Read src/services/AuthService.ts
+  在 createUser() 中发现:
+    await this.userRepo.save(user);
+    await this.emailService.sendVerificationCode(user.email);
+    → 添加: "UserRepository.save()"
+    → 添加: "EmailService.sendVerificationCode()"
+  
+  # 5.4 继续追踪 EmailService
+  Read src/services/EmailService.ts
+  在 sendVerificationCode() 中发现:
+    await this.emailProvider.send(template);
+    → 添加: "EmailProvider.send()"
+  
+  # 最终调用链:
+  callChain = [
+    "AuthController.registerUser()",
+    "→ AuthService.createUser()",
+    "  → UserRepository.save()",
+    "  → EmailService.sendVerificationCode()",
+    "    → EmailProvider.send()"
+  ]
+```
+
+#### Step 5: 验证和补充
+
+```bash
+  # ━━━ 策略 6: 验证定位完整性 ━━━
+  
+  # 6.1 检查是否遗漏关键文件
+  # 例如：发现了 EmailService，但没找到 email 模板文件
+  Grep "email.*template" --path ./src/ -i
+  Grep "verification.*email" --path ./src/templates/ -i
+  
+  # 6.2 检查配置文件
+  # 例如：邮件服务可能需要配置文件
+  Grep "SMTP|smtp|email.*config" --path ./
+  
+  # 6.3 检查数据库 Schema
+  # 例如：User 表的 verification_code 字段
+  Grep "verification.*code" --path ./src/models/ -i
+  Grep "CREATE TABLE.*user" --path ./ -i
+```
+
+#### Step 6: 记录映射关系
+
+```javascript
+  # 最终记录:
   requirement.relatedCode = {
-    entryPoint: "src/controllers/AuthController.ts:registerUser()",
-    relatedFiles: [
-      "src/controllers/AuthController.ts",
-      "src/services/AuthService.ts",
-      "src/services/EmailService.ts",
-      "src/models/User.ts"
-    ],
+    // 入口点
+    entryPoint: {
+      file: "src/controllers/AuthController.ts",
+      function: "registerUser",
+      line: 45,
+      route: "POST /api/register"
+    },
+    
+    // 完整调用链（带文件路径）
     callChain: [
-      "AuthController.registerUser()",
-      "→ AuthService.createUser()",
-      "→ EmailService.sendVerificationCode()",
-      "→ UserRepository.create()"
+      { 
+        file: "src/controllers/AuthController.ts", 
+        function: "registerUser()",
+        calls: ["authService.createUser()"]
+      },
+      { 
+        file: "src/services/AuthService.ts", 
+        function: "createUser()",
+        calls: ["userRepo.save()", "emailService.sendVerificationCode()"]
+      },
+      { 
+        file: "src/services/EmailService.ts", 
+        function: "sendVerificationCode()",
+        calls: ["emailProvider.send()"]
+      }
+    ],
+    
+    // 涉及的所有文件（按重要性排序）
+    relatedFiles: [
+      { path: "src/controllers/AuthController.ts", importance: "high", reason: "入口点" },
+      { path: "src/services/AuthService.ts", importance: "high", reason: "核心业务逻辑" },
+      { path: "src/services/EmailService.ts", importance: "high", reason: "邮件发送" },
+      { path: "src/models/User.ts", importance: "medium", reason: "用户模型" },
+      { path: "src/repositories/UserRepository.ts", importance: "medium", reason: "数据持久化" },
+      { path: "config/email.ts", importance: "low", reason: "邮件配置" }
+    ],
+    
+    // 关键代码片段位置
+    keyCodeLocations: [
+      { file: "src/controllers/AuthController.ts", line: 45, snippet: "registerUser()" },
+      { file: "src/services/AuthService.ts", line: 78, snippet: "await emailService.send()" },
+      { file: "src/services/EmailService.ts", line: 120, snippet: "sendVerificationCode()" }
     ]
   }
 ```
@@ -867,9 +1123,189 @@ options:
 🔬 接下来将对每个需求进行针对性审查...
 ```
 
+**执行：继续执行 Phase 2-A（需求驱动审查）**
+
 ---
 
-## Phase 2: 按需求针对性审查 (Requirement-Driven Validation) 🆕
+## Phase 1-B: 全面项目分析与模块识别（全链路模式）
+
+**⚠️ 只有用户在 Phase 0 选择了"全链路诊断"才执行此流程**
+
+**目标**: 全面分析项目架构，识别所有核心业务模块，为按模块诊断做准备
+
+### 1-B.1 项目架构全面分析
+
+执行 Phase 1-A 中的 1.1-1.6 节的所有分析步骤，但更全面：
+- Monorepo 检测
+- 项目类型与技术栈识别
+- 项目结构分析
+- 数据存储分析
+- 模块检测
+
+### 1-B.2 识别核心业务功能模块
+
+**关键差异**：全链路模式需要主动识别项目中的核心业务功能
+
+#### Step 1: 扫描所有代码文件
+
+```bash
+# 扫描 Controller/Handler 层（入口点）
+Grep "class.*Controller" --path ./src/ -i
+Grep "@Controller|@RestController" --path ./src/ -i
+Grep "router\.(get|post|put|delete)" --path ./src/ -i
+Grep "app\.(get|post)" --path ./src/ -i
+
+# 扫描 Service 层（业务逻辑）
+Grep "class.*Service" --path ./src/ -i
+Grep "@Service|@Injectable" --path ./src/ -i
+
+# 扫描核心业务关键词
+Grep "create|add|new" --path ./src/controllers/ -i
+Grep "update|edit|modify" --path ./src/controllers/ -i
+Grep "delete|remove" --path ./src/controllers/ -i
+Grep "query|list|get|find" --path ./src/controllers/ -i
+```
+
+#### Step 2: 按模块组织代码
+
+```javascript
+ModuleStructure = {
+  modules: [
+    {
+      name: "Controller层",
+      path: "src/controllers/",
+      files: [
+        { path: "AuthController.ts", functions: ["register", "login", "logout"] },
+        { path: "OrderController.ts", functions: ["create", "list", "cancel"] },
+        { path: "ProductController.ts", functions: ["list", "detail", "search"] }
+      ],
+      fileCount: 8,
+      lineCount: ~2500
+    },
+    {
+      name: "Service层",
+      path: "src/services/",
+      files: [
+        { path: "AuthService.ts", functions: ["createUser", "validateToken"] },
+        { path: "OrderService.ts", functions: ["create", "process", "cancel"] },
+        { path: "EmailService.ts", functions: ["sendVerification", "sendNotification"] }
+      ],
+      fileCount: 12,
+      lineCount: ~4500
+    },
+    {
+      name: "Model/Repository层",
+      path: "src/models/",
+      files: [
+        { path: "User.ts", type: "model" },
+        { path: "Order.ts", type: "model" },
+        { path: "UserRepository.ts", type: "repository" }
+      ],
+      fileCount: 6,
+      lineCount: ~1200
+    },
+    {
+      name: "Utils/Helper层",
+      path: "src/utils/",
+      files: ["validator.ts", "crypto.ts", "logger.ts"],
+      fileCount: 5,
+      lineCount: ~800
+    }
+  ]
+}
+```
+
+#### Step 3: 识别核心业务功能
+
+```javascript
+CoreBusinessFunctions = [
+  {
+    id: "FUNC-001",
+    name: "用户注册",
+    entryPoint: "AuthController.register()",
+    callChain: [
+      "AuthController.register()",
+      "→ AuthService.createUser()",
+      "→ EmailService.sendVerification()",
+      "→ UserRepository.save()"
+    ],
+    involvedModules: ["Controller", "Service", "Model"],
+    involvedFiles: 4,
+    estimatedComplexity: "medium"
+  },
+  {
+    id: "FUNC-002",
+    name: "订单创建",
+    entryPoint: "OrderController.create()",
+    callChain: [
+      "OrderController.create()",
+      "→ OrderService.create()",
+      "→ InventoryService.deduct()",
+      "→ NotificationService.send()"
+    ],
+    involvedModules: ["Controller", "Service"],
+    involvedFiles: 5,
+    estimatedComplexity: "high"
+  },
+  {
+    id: "FUNC-003",
+    name: "支付回调处理",
+    entryPoint: "PaymentController.callback()",
+    callChain: [
+      "PaymentController.callback()",
+      "→ PaymentService.verifySignature()",
+      "→ OrderService.updateStatus()",
+      "→ NotificationService.send()"
+    ],
+    involvedModules: ["Controller", "Service"],
+    involvedFiles: 4,
+    estimatedComplexity: "high"
+  }
+]
+```
+
+### 1-B.3 输出分析结果
+
+```
+🔍 项目架构分析完成！
+
+📊 项目统计:
+  - 项目类型: 后端服务（Node.js + Express + TypeScript）
+  - 架构模式: MVC（Controller-Service-Repository）
+  - 代码文件: 31 个
+  - 代码行数: ~9,000 行
+  - 数据库: MySQL + Redis
+
+📦 模块划分:
+  ├─ Controller层 (8 个文件, ~2,500 行)
+  ├─ Service层 (12 个文件, ~4,500 行)
+  ├─ Model/Repository层 (6 个文件, ~1,200 行)
+  └─ Utils/Helper层 (5 个文件, ~800 行)
+
+🎯 识别到 8 个核心业务功能:
+  1. 用户注册 (AuthController.register)
+  2. 用户登录 (AuthController.login)
+  3. 订单创建 (OrderController.create)
+  4. 订单查询 (OrderController.list)
+  5. 订单取消 (OrderController.cancel)
+  6. 支付回调 (PaymentController.callback)
+  7. 产品搜索 (ProductController.search)
+  8. 库存扣减 (InventoryService.deduct)
+
+🔬 接下来将对每个模块进行深度健康扫描...
+```
+
+---
+
+## Phase 2: 项目诊断审查
+
+**根据 Phase 0 选择的模式执行不同审查：**
+- **需求驱动模式** → Phase 2-A（针对性审查）
+- **全链路模式** → Phase 2-B（模块健康扫描）
+
+---
+
+## Phase 2-A: 按需求针对性审查（需求驱动模式）
 
 **这是核心价值所在！不再盲目扫描，而是针对每个需求点，验证实现是否正确。**
 
@@ -1128,34 +1564,203 @@ Read src/models/User.ts
     - [检查] 重复注册如何处理？
     - [检查] 邮箱为空如何处理？
 
-# Step 5: 识别潜在问题
+# Step 5: 识别潜在问题（强化版：提供证据和原因）
 
-发现的问题：
-  🔴 [Critical] AuthController.register() 没有验证邮箱格式
-    位置：src/controllers/AuthController.ts:45
-    风险：可以注册非法邮箱地址
-  
-  🟠 [High] EmailService.send() 失败时没有回滚用户创建
-    位置：src/services/AuthService.ts:78
-    风险：用户已创建但未收到验证邮件，无法激活
-  
-  🟡 [Medium] 验证码未设置过期时间
-    位置：src/services/AuthService.ts:82
-    风险：验证码可能被长期使用
+发现的问题（必须包含：代码证据、问题原因、影响范围）：
 
-# Step 6: 记录对比结果
+## 🔴 [Critical] 缺少邮箱格式验证
+
+**位置**: `src/controllers/AuthController.ts:45-52`
+
+**代码证据**:
+```typescript
+// 当前代码
+async register(req: Request) {
+  const { email, password } = req.body;
+  
+  // ❌ 直接使用 email，没有验证格式
+  const user = await this.authService.createUser(email, password);
+  
+  return { success: true, userId: user.id };
+}
+```
+
+**为什么是问题**:
+1. **缺少输入验证**：允许非法邮箱格式（如 "test", "test@", "test..double@example.com"）
+2. **可能导致后续错误**：EmailService 尝试发送邮件时会失败
+3. **违反需求**：需求明确要求"用户提交注册信息（邮箱、密码）"，隐含邮箱必须有效
+
+**影响范围**:
+- **数据质量**：数据库中存在无效邮箱记录
+- **用户体验**：用户注册成功，但永远无法收到验证邮件
+- **运维成本**：EmailService 频繁失败，产生大量错误日志
+
+**如何修复**:
+```typescript
+async register(req: Request) {
+  const { email, password } = req.body;
+  
+  // ✅ 添加邮箱格式验证
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!email || !emailRegex.test(email)) {
+    throw new ValidationError('邮箱格式无效');
+  }
+  
+  const user = await this.authService.createUser(email, password);
+  return { success: true, userId: user.id };
+}
+```
+
+---
+
+## 🟠 [High] 邮件发送失败未回滚用户创建
+
+**位置**: `src/services/AuthService.ts:75-85`
+
+**代码证据**:
+```typescript
+// 当前代码
+async createUser(email: string, password: string) {
+  // 1. 创建用户记录
+  const user = await this.userRepo.create({ email, password });
+  
+  // 2. 发送验证邮件
+  // ❌ 如果这里失败，user 已经被创建，不会回滚
+  await this.emailService.sendVerificationCode(user.email, code);
+  
+  return user;
+}
+```
+
+**为什么是问题**:
+1. **缺少事务保护**：用户创建和邮件发送不是原子操作
+2. **数据不一致**：用户记录存在，但验证邮件未发送
+3. **用户无法激活**：用户已注册但无法收到验证码，账号无法使用
+
+**影响范围**:
+- **数据一致性**：database 和 email 系统状态不一致
+- **用户体验**：用户注册"成功"但无法登录，困惑
+- **客服成本**：用户投诉无法激活账号
+
+**复现步骤**:
+1. 用户提交注册请求
+2. 数据库创建用户成功
+3. 邮件服务不可用（网络故障、配额耗尽等）
+4. sendVerificationCode() 抛出异常
+5. 用户创建成功，但没有验证邮件
+
+**如何修复**:
+```typescript
+async createUser(email: string, password: string) {
+  // ✅ 使用数据库事务
+  const transaction = await this.db.beginTransaction();
+  
+  try {
+    const user = await this.userRepo.create({ email, password }, { transaction });
+    await this.emailService.sendVerificationCode(user.email, code);
+    
+    await transaction.commit();
+    return user;
+  } catch (error) {
+    // 回滚用户创建
+    await transaction.rollback();
+    throw error;
+  }
+}
+```
+
+---
+
+## 🟡 [Medium] 验证码未设置过期时间
+
+**位置**: `src/services/AuthService.ts:82-83`
+
+**代码证据**:
+```typescript
+// 当前代码
+const code = generateRandomCode(6);
+// ❌ 验证码直接保存，没有设置过期时间
+await this.verificationRepo.save({ email, code });
+```
+
+**为什么是问题**:
+1. **安全风险**：验证码可以无限期使用
+2. **违反最佳实践**：验证码应该有时效性（通常 5-30 分钟）
+3. **潜在攻击面**：攻击者可以慢慢暴力破解验证码
+
+**影响范围**:
+- **安全性**：验证码失去时效性保护
+- **用户体验**：用户可能使用很久之前的验证码（不符合预期）
+
+**如何修复**:
+```typescript
+const code = generateRandomCode(6);
+const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15分钟后过期
+
+await this.verificationRepo.save({ 
+  email, 
+  code, 
+  expiresAt  // ✅ 添加过期时间
+});
+```
+
+---
+
+# Step 6: 记录对比结果（结构化）
+
 RequirementValidationResult = {
   requirementId: "REQ-001",
   title: "用户注册邮件验证",
-  overallStatus: "部分实现", // 完全实现 | 部分实现 | 未实现 | 实现错误
-  implementationScore: 70, // 0-100
-  issues: [
-    { severity: "Critical", description: "..." },
-    { severity: "High", description: "..." },
-    { severity: "Medium", description: "..." }
+  
+  // 总体状态
+  overallStatus: "部分实现",
+  implementationScore: 70,
+  
+  // 已实现的功能
+  implementedFeatures: [
+    { feature: "生成验证码", status: "完整实现", confidence: "high" },
+    { feature: "发送验证邮件", status: "完整实现", confidence: "high" },
+    { feature: "创建用户记录", status: "完整实现", confidence: "high" }
   ],
-  missingFeatures: ["邮箱格式验证", "失败回滚机制"],
-  recommendations: [...]
+  
+  // 发现的问题（详细）
+  issues: [
+    {
+      severity: "Critical",
+      title: "缺少邮箱格式验证",
+      location: { file: "src/controllers/AuthController.ts", line: 45 },
+      codeEvidence: "const { email, password } = req.body;\nconst user = await this.authService.createUser(email, password);",
+      reason: "允许非法邮箱格式，导致后续邮件发送失败",
+      impact: ["数据质量", "用户体验", "运维成本"],
+      fix: "添加邮箱格式正则验证"
+    },
+    {
+      severity: "High",
+      title: "邮件发送失败未回滚用户创建",
+      location: { file: "src/services/AuthService.ts", line: 78 },
+      codeEvidence: "const user = await this.userRepo.create(...);\nawait this.emailService.send(...);",
+      reason: "缺少事务保护，用户创建和邮件发送不是原子操作",
+      impact: ["数据一致性", "用户体验"],
+      reproSteps: ["用户注册", "邮件服务不可用", "用户创建成功但无验证邮件"],
+      fix: "使用数据库事务包裹两个操作"
+    },
+    {
+      severity: "Medium",
+      title: "验证码未设置过期时间",
+      location: { file: "src/services/AuthService.ts", line: 82 },
+      codeEvidence: "await this.verificationRepo.save({ email, code });",
+      reason: "验证码可以无限期使用，存在安全风险",
+      impact: ["安全性"],
+      fix: "添加 expiresAt 字段，设置 15 分钟过期时间"
+    }
+  ],
+  
+  // 缺失的功能
+  missingFeatures: [
+    "邮箱格式验证",
+    "失败回滚机制",
+    "验证码过期机制"
+  ]
 }
 ```
 
@@ -1210,7 +1815,241 @@ RequirementValidationResult = {
 
 ---
 
+## Phase 2-B: 按模块健康扫描（全链路模式）
+
+**⚠️ 只有用户在 Phase 0 选择了"全链路诊断"才执行此流程**
+
+**目标**: 对每个模块进行全面的代码健康检查，识别潜在问题
+
+### 2-B.1 扫描策略
+
+**逐模块扫描，不是逐需求验证**：
+
+```javascript
+for each module in ModuleStructure:
+  1. 读取模块内所有代码文件
+  2. 识别该模块的核心功能
+  3. 执行通用代码质量检查
+  4. 执行特定层级的检查（Controller、Service、Model 有不同检查点）
+  5. 记录模块健康度和问题列表
+```
+
+### 2-B.2 Controller层扫描清单
+
+**适用**: `src/controllers/`, `src/routes/`, `src/handlers/`
+
+```yaml
+1. 路由定义检查:
+   - ✅ 路由路径是否符合 RESTful 规范？
+   - ✅ HTTP 方法是否正确使用？
+   - ✅ 路由是否有重复定义？
+
+2. 参数验证:
+   - ✅ 请求参数是否验证？
+   - ✅ 必填参数是否检查？
+   - ✅ 参数类型是否验证？
+   
+3. 错误处理:
+   - ✅ 异常是否被捕获？
+   - ✅ 是否返回统一的错误格式？
+   - ✅ HTTP 状态码是否正确？
+   
+4. 安全性:
+   - ✅ 是否有身份验证？
+   - ✅ 是否有权限控制？
+   - ✅ 敏感操作是否有额外验证？
+   
+5. 响应格式:
+   - ✅ 是否统一响应格式？
+   - ✅ 是否包含必要字段（code、message、data）？
+```
+
+### 2-B.3 Service层扫描清单
+
+**适用**: `src/services/`, `src/business/`
+
+```yaml
+1. 业务逻辑完整性:
+   - ✅ 核心业务流程是否完整？
+   - ✅ 边界情况是否处理？
+   - ✅ 业务规则是否正确？
+   
+2. 事务管理:
+   - ✅ 多个数据操作是否在事务中？
+   - ✅ 失败时是否回滚？
+   - ✅ 事务边界是否合理？
+   
+3. 错误处理:
+   - ✅ 第三方调用失败是否有fallback？
+   - ✅ 异常是否被正确传播？
+   - ✅ 错误信息是否清晰？
+   
+4. 数据一致性:
+   - ✅ 状态转换是否合法？
+   - ✅ 并发操作是否安全？
+   - ✅ 幂等性是否保证？
+   
+5. 性能:
+   - ✅ 是否有 N+1 查询？
+   - ✅ 循环中是否有数据库调用？
+   - ✅ 是否合理使用缓存？
+```
+
+### 2-B.4 Model/Repository层扫描清单
+
+**适用**: `src/models/`, `src/repositories/`, `src/entities/`
+
+```yaml
+1. 数据模型定义:
+   - ✅ 字段类型是否正确？
+   - ✅ 必填字段是否标注？
+   - ✅ 默认值是否合理？
+   
+2. 数据验证:
+   - ✅ 是否有字段约束？
+   - ✅ 唯一性约束是否定义？
+   - ✅ 外键关系是否正确？
+   
+3. 查询安全:
+   - ✅ 是否使用参数化查询？
+   - ✅ 是否有 SQL 注入风险？
+   - ✅ 查询条件是否验证？
+   
+4. 索引优化:
+   - ✅ 常用查询字段是否有索引？
+   - ✅ 联合查询是否有复合索引？
+```
+
+### 2-B.5 Util/Helper层扫描清单
+
+**适用**: `src/utils/`, `src/helpers/`, `src/lib/`
+
+```yaml
+1. 函数设计:
+   - ✅ 函数职责是否单一？
+   - ✅ 参数是否验证？
+   - ✅ 返回值是否一致？
+   
+2. 错误处理:
+   - ✅ 异常情况是否处理？
+   - ✅ 是否抛出明确的错误？
+   
+3. 代码质量:
+   - ✅ 是否有单元测试？
+   - ✅ 是否有文档注释？
+   - ✅ 是否可复用？
+```
+
+### 2-B.6 扫描执行流程
+
+```bash
+# 对每个模块执行
+
+## 示例：扫描 Controller 层
+
+# Step 1: 读取所有文件
+Read src/controllers/AuthController.ts
+Read src/controllers/OrderController.ts
+Read src/controllers/ProductController.ts
+...
+
+# Step 2: 逐文件分析
+for each file in controllers:
+  # 2.1 识别路由定义
+  Grep "@Get|@Post|@Put|@Delete" --path file
+  Grep "router\\.(get|post)" --path file
+  
+  # 2.2 检查参数验证
+  查找函数参数解构：const { email, password } = req.body
+  检查是否有验证逻辑：if (!email) 或使用验证库
+  
+  # 2.3 检查错误处理
+  查找 try-catch 块
+  检查 throw 语句
+  检查 res.status(xxx) 的使用
+  
+  # 2.4 检查安全性
+  查找认证中间件：@UseGuards, authenticate
+  查找权限检查：hasPermission, authorize
+  
+  # 2.5 检查响应格式
+  查找 return 语句
+  验证是否统一格式
+
+# Step 3: 记录问题
+ModuleHealthResult = {
+  moduleName: "Controller层",
+  healthScore: 75,  // 0-100
+  fileCount: 8,
+  issuesFound: [
+    {
+      file: "AuthController.ts",
+      line: 45,
+      severity: "High",
+      type: "参数验证缺失",
+      description: "register() 方法缺少邮箱格式验证",
+      evidence: "const { email, password } = req.body;\nconst user = await authService.create(email, password);"
+    },
+    ...
+  ]
+}
+```
+
+### 2-B.7 模块健康度评分
+
+根据发现的问题计算每个模块的健康度：
+
+```javascript
+计算公式:
+healthScore = 100 - (criticalCount * 20 + highCount * 10 + mediumCount * 5 + lowCount * 2)
+
+评级标准:
+- 90-100: ⭐⭐⭐⭐⭐ 优秀
+- 75-89:  ⭐⭐⭐⭐ 良好
+- 60-74:  ⭐⭐⭐ 一般
+- 40-59:  ⭐⭐ 较差
+- 0-39:   ⭐ 需要重构
+```
+
+### 2-B.8 扫描进度展示
+
+```
+🔬 正在进行全链路健康扫描...
+
+[1/4] 扫描 Controller层 (8 个文件)...
+  📂 读取代码文件...
+  🔍 检查路由定义、参数验证、错误处理、安全性...
+  ⚠️  发现 5 个问题 (🔴 1 | 🟠 2 | 🟡 2)
+  📊 健康度: 75% ⭐⭐⭐⭐
+
+[2/4] 扫描 Service层 (12 个文件)...
+  📂 读取代码文件...
+  🔍 检查业务逻辑、事务管理、数据一致性、性能...
+  ⚠️  发现 8 个问题 (🔴 2 | 🟠 3 | 🟡 3)
+  📊 健康度: 65% ⭐⭐⭐
+
+[3/4] 扫描 Model/Repository层 (6 个文件)...
+  📂 读取代码文件...
+  🔍 检查数据模型、查询安全、索引优化...
+  ⚠️  发现 3 个问题 (🟠 2 | 🟡 1)
+  📊 健康度: 80% ⭐⭐⭐⭐
+
+[4/4] 扫描 Utils/Helper层 (5 个文件)...
+  📂 读取代码文件...
+  🔍 检查函数设计、错误处理、代码质量...
+  ⚠️  发现 2 个问题 (🟡 2)
+  📊 健康度: 90% ⭐⭐⭐⭐⭐
+
+✅ 全链路扫描完成！共发现 18 个问题。
+```
+
+---
+
 ## Phase 2.5: 生成辅助验证的单元测试 🆕
+
+**注意**: 
+- **需求驱动模式**：为每个需求生成测试
+- **全链路模式**：为每个模块的关键函数生成测试（可选，token 消耗大）
 
 **目标**：为每个需求生成单元测试，帮助验证需求实现的正确性。
 
@@ -1567,15 +2406,23 @@ npm test tests/requirement-validation/REQ-001.test.ts
 
 ---
 
-## Phase 3: 生成"需求 vs 实现"对照报告 🆕
+## Phase 3: 生成诊断报告
+
+**根据 Phase 0 选择的模式生成不同报告：**
+- **需求驱动模式** → `REQUIREMENT_VALIDATION_REPORT.md`（需求验证报告）
+- **全链路模式** → `MODULE_HEALTH_REPORT.md`（模块健康报告）
+
+---
+
+## Phase 3-A: 生成需求验证报告（需求驱动模式）
 
 分析完成后，在根目录生成一份名为 `REQUIREMENT_VALIDATION_REPORT.md` 的诊断报告。
 
 **核心理念**：以需求为维度，展示每个需求的实现情况和问题。
 
-**报告原则**：
-- ✅ **保留**：需求信息、实现情况、问题列表、修复建议
-- ❌ **移除**：所有评估表格、修复计划表格、行动计划、总体评估章节
+**报告原则（简化）**：
+- ✅ **只保留**：需求信息、实现情况、问题列表（含代码证据）、修复建议
+- ❌ **移除**：评估表格、修复计划表格、行动计划、总体评估
 
 **报告模板：**
 
@@ -1635,41 +2482,38 @@ npm test tests/requirement-validation/REQ-001.test.ts
 
 #### 📌 需求信息
 
-| 项目 | 内容 |
-|------|------|
-| **需求 ID** | REQ-001 |
-| **需求标题** | [用户提供的需求标题] |
-| **需求描述** | [用户提供的需求描述] |
-| **需求类型** | 功能需求 / 性能需求 / 安全需求 / 数据一致性 |
-| **预期行为** | 1. [步骤1]<br>2. [步骤2]<br>3. [步骤3]... |
+- **需求 ID**: REQ-001
+- **需求类型**: 功能需求 / 性能需求 / 安全需求 / 数据一致性
+- **需求描述**: [用户提供的需求描述]
+
+**预期行为**:
+1. [步骤1]
+2. [步骤2]
+3. [步骤3]
 
 #### 🔍 实现情况
 
-**实现状态**: ✅ **完全实现** / ⚠️ **部分实现** / ❌ **未实现/实现错误** ([ ]/100 分)
+**实现状态**: ✅ **完全实现** / ⚠️ **部分实现** / ❌ **未实现/实现错误**
 
 **代码定位**:
-- 📍 入口: `[文件路径]:[函数名]()`
-- 🔗 调用链:
+- 📍 **入口点**: `[文件路径]:[函数名]()`
+- 🔗 **调用链**:
   ```
   EntryPoint()
     → Service.method1()
     → Service.method2()
     → Repository.method()
   ```
-- 📂 涉及文件: [数量] 个
+- 📂 **涉及文件** ([数量] 个):
   - `[文件路径1]`
   - `[文件路径2]`
-  - ...
 
-#### ✅ 已实现的功能
+#### ✅ 已正确实现
 
-| 需求项 | 实现情况 | 说明 |
-|-------|---------|------|
-| ✅ [需求项1] | 已实现 | [简要说明] |
-| ✅ [需求项2] | 已实现 | [简要说明] |
-| ⚠️ [需求项3] | 部分实现 | [简要说明] |
+- ✅ [功能点1]: [简要说明]
+- ✅ [功能点2]: [简要说明]
 
-#### ❌ 未实现/存在问题
+#### ❌ 发现的问题
 
 **🔴 [Critical] [问题标题]**
 - **位置**: `[文件名]:[行号]`
@@ -1724,7 +2568,157 @@ npm test tests/requirement-validation/REQ-[ID].test.[ext]
 
 ---
 
-🤖 **Generated by Project Doctor v2.2** - 需求驱动的项目诊断工具
+🤖 **Generated by Project Doctor v3.0** - 需求驱动的项目诊断工具
+```
+
+---
+
+## Phase 3-B: 生成模块健康报告（全链路模式）
+
+分析完成后，在根目录生成一份名为 `MODULE_HEALTH_REPORT.md` 的诊断报告。
+
+**核心理念**：以模块为维度，展示每个模块的健康度和问题。
+
+**报告模板：**
+
+```markdown
+# 🔍 项目健康诊断报告 (Module Health Report)
+
+**生成时间**: YYYY-MM-DD HH:MM
+**项目路径**: [项目路径]  
+**项目类型**: [单项目 / Monorepo]  
+**开发语言**: [语言和版本]  
+**主要框架**: [框架名称和版本]  
+
+---
+
+## 📊 执行摘要
+
+### 项目统计
+
+- 📁 **代码文件**: [数量] 个
+- 📏 **代码行数**: ~[数量] 行
+- 🏗️ **架构模式**: MVC / Layered / Microservices
+- 💾 **数据存储**: MySQL / PostgreSQL / MongoDB
+
+### 健康度总览
+
+| 模块 | 文件数 | 健康度 | 问题数 | 评级 |
+|------|-------|--------|--------|------|
+| Controller层 | [数量] | [分数]% | [数量] | ⭐⭐⭐⭐ |
+| Service层 | [数量] | [分数]% | [数量] | ⭐⭐⭐ |
+| Model/Repository层 | [数量] | [分数]% | [数量] | ⭐⭐⭐⭐ |
+| Utils/Helper层 | [数量] | [分数]% | [数量] | ⭐⭐⭐⭐⭐ |
+
+**项目整体健康度**: [分数]% ⭐⭐⭐⭐
+
+### 问题统计
+
+| 严重程度 | 数量 |
+|---------|------|
+| 🔴 Critical | [数量] |
+| 🟠 High | [数量] |
+| 🟡 Medium | [数量] |
+| 🟢 Low | [数量] |
+
+**总问题数**: [数量] 个
+
+---
+
+## 📋 模块诊断详情
+
+### 模块 #1: Controller层
+
+#### 📂 模块信息
+
+- **路径**: `src/controllers/`
+- **文件数**: [数量] 个
+- **代码行数**: ~[数量] 行
+- **健康度**: [分数]% ⭐⭐⭐⭐
+
+#### ✅ 做得好的地方
+
+- ✅ 统一的错误处理机制
+- ✅ RESTful API 设计规范
+- ✅ 完善的参数验证
+
+#### ❌ 发现的问题
+
+##### 🔴 [Critical] [问题标题]
+
+**文件**: `src/controllers/AuthController.ts:45`
+
+**代码证据**:
+```typescript
+// 当前代码
+async register(req: Request) {
+  const { email, password } = req.body;
+  const user = await this.authService.createUser(email, password);
+  return { success: true, userId: user.id };
+}
+```
+
+**问题说明**:
+- 缺少邮箱格式验证
+- 允许非法邮箱注册
+
+**为什么是问题**:
+用户可以使用无效邮箱注册，导致后续邮件发送失败，影响用户体验
+
+**影响范围**:
+- 数据质量
+- 用户体验
+- 运维成本
+
+**修复建议**:
+```typescript
+async register(req: Request) {
+  const { email, password } = req.body;
+  
+  // 添加邮箱格式验证
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    throw new ValidationError('邮箱格式无效');
+  }
+  
+  const user = await this.authService.createUser(email, password);
+  return { success: true, userId: user.id };
+}
+```
+
+---
+
+##### 🟠 [High] [问题标题]
+
+**文件**: `[文件路径]:[行号]`
+**问题**: [简要描述]
+**影响**: [影响说明]
+**修复**: [修复建议]
+
+---
+
+[为每个问题重复上述结构]
+
+---
+
+### 模块 #2: Service层
+
+[重复模块诊断结构]
+
+---
+
+### 模块 #3: Model/Repository层
+
+[重复模块诊断结构]
+
+---
+
+### 模块 #4: Utils/Helper层
+
+[重复模块诊断结构]
+
+---
+
+🤖 **Generated by Project Doctor v3.0** - 全链路健康诊断工具
 ```
 
 ## 执行逻辑
