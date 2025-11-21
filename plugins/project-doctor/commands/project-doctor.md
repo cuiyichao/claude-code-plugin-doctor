@@ -1210,11 +1210,372 @@ RequirementValidationResult = {
 
 ---
 
+## Phase 2.5: 生成辅助验证的单元测试 🆕
+
+**目标**：为每个需求生成单元测试，帮助验证需求实现的正确性。
+
+### 2.5.1 测试生成策略
+
+根据需求类型和发现的问题，生成相应的单元测试：
+
+**生成原则**：
+1. **一个需求一个测试文件**：按需求 ID 命名，如 `REQ-001.test.[ext]`
+2. **测试覆盖需求的关键场景**：正常流程 + 异常流程 + 边界情况
+3. **针对发现的问题生成验证用例**：确保修复后能通过测试
+4. **使用项目现有测试框架**：检测并使用项目中的测试工具（Jest、Mocha、JUnit、pytest 等）
+
+### 2.5.2 测试文件组织
+
+```
+tests/
+└── requirement-validation/          # 需求验证测试目录
+    ├── REQ-001.test.ts              # 需求 #1 的测试
+    ├── REQ-002.test.ts              # 需求 #2 的测试
+    └── README.md                     # 测试说明文档
+```
+
+### 2.5.3 生成步骤
+
+对每个需求：
+
+**Step 1: 检测项目测试框架**
+```bash
+# 检测测试框架
+Read package.json → 查看 devDependencies
+- jest → 使用 Jest
+- mocha → 使用 Mocha
+- vitest → 使用 Vitest
+
+Read pom.xml / build.gradle → 查看测试依赖
+- JUnit 4/5 → 使用 JUnit
+
+Read requirements.txt / pyproject.toml
+- pytest → 使用 pytest
+- unittest → 使用 unittest
+
+# 如果没有检测到测试框架，使用语言默认：
+- JavaScript/TypeScript → Jest
+- Java → JUnit 5
+- Python → pytest
+- Go → testing 包
+```
+
+**Step 2: 分析需求测试点**
+
+基于需求描述和发现的问题，确定需要覆盖的测试场景：
+
+```yaml
+测试场景类型:
+  正常流程测试 (Happy Path):
+    - 测试需求的主要功能
+    - 验证预期输入得到预期输出
+  
+  异常流程测试 (Error Cases):
+    - 针对发现的 Critical/High 问题编写测试
+    - 验证错误处理是否正确
+  
+  边界条件测试 (Edge Cases):
+    - 空值、null、undefined
+    - 最大/最小值
+    - 并发情况
+  
+  数据一致性测试:
+    - 事务回滚
+    - 数据库约束
+    - 缓存一致性
+```
+
+**Step 3: 生成测试代码**
+
+根据需求类型选择测试模板：
+
+**A. 功能需求测试模板 (Functional)**
+
+```typescript
+// REQ-001.test.ts - 用户注册邮件验证
+import { describe, it, expect, beforeEach, afterEach } from '@jest/globals';
+import { UserService } from '@/services/UserService';
+import { EmailService } from '@/services/EmailService';
+
+describe('REQ-001: 用户注册邮件验证', () => {
+  let userService: UserService;
+  let emailService: EmailService;
+
+  beforeEach(() => {
+    // 初始化测试环境
+    userService = new UserService();
+    emailService = new EmailService();
+  });
+
+  afterEach(() => {
+    // 清理测试数据
+  });
+
+  describe('正常流程', () => {
+    it('应该成功注册用户并发送验证邮件', async () => {
+      // Arrange
+      const userData = {
+        email: 'test@example.com',
+        password: 'SecurePass123!',
+        username: 'testuser'
+      };
+
+      // Act
+      const result = await userService.register(userData);
+
+      // Assert
+      expect(result.success).toBe(true);
+      expect(result.userId).toBeDefined();
+      expect(emailService.sendVerificationEmail).toHaveBeenCalledWith(
+        userData.email,
+        expect.any(String) // verification code
+      );
+    });
+  });
+
+  describe('异常流程 - 针对发现的问题', () => {
+    it('[Critical] 应该验证邮箱格式', async () => {
+      // 问题：缺少邮箱格式验证
+      const invalidEmails = [
+        'invalid-email',
+        '@example.com',
+        'test@',
+        'test..double@example.com'
+      ];
+
+      for (const email of invalidEmails) {
+        const result = await userService.register({
+          email,
+          password: 'SecurePass123!',
+          username: 'testuser'
+        });
+
+        expect(result.success).toBe(false);
+        expect(result.error).toContain('邮箱格式无效');
+      }
+    });
+
+    it('[High] 发送邮件失败应该回滚用户创建', async () => {
+      // 问题：邮件发送失败未回滚事务
+      emailService.sendVerificationEmail.mockRejectedValue(
+        new Error('邮件服务不可用')
+      );
+
+      const userData = {
+        email: 'test@example.com',
+        password: 'SecurePass123!',
+        username: 'testuser'
+      };
+
+      await expect(userService.register(userData)).rejects.toThrow();
+
+      // 验证用户未被创建
+      const user = await userService.findByEmail(userData.email);
+      expect(user).toBeNull();
+    });
+  });
+
+  describe('边界条件', () => {
+    it('应该处理重复邮箱注册', async () => {
+      // 第一次注册
+      await userService.register({
+        email: 'test@example.com',
+        password: 'Pass123!',
+        username: 'user1'
+      });
+
+      // 第二次使用相同邮箱注册
+      const result = await userService.register({
+        email: 'test@example.com',
+        password: 'Pass456!',
+        username: 'user2'
+      });
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('邮箱已被注册');
+    });
+  });
+});
+```
+
+**B. 数据一致性测试模板 (Data Consistency)**
+
+```typescript
+// REQ-002.test.ts - 订单创建数据一致性
+describe('REQ-002: 订单创建数据一致性', () => {
+  it('[Critical] 库存扣减和订单创建应该在同一事务中', async () => {
+    const initialStock = await productRepo.getStock(productId);
+    
+    // 模拟订单创建失败
+    jest.spyOn(orderRepo, 'create').mockRejectedValue(new Error('DB Error'));
+
+    await expect(orderService.createOrder({
+      productId,
+      quantity: 1
+    })).rejects.toThrow();
+
+    // 验证库存未被扣减
+    const finalStock = await productRepo.getStock(productId);
+    expect(finalStock).toBe(initialStock);
+  });
+
+  it('并发订单不应该超卖', async () => {
+    const productId = 'prod-123';
+    const initialStock = 10;
+
+    // 模拟 20 个并发订单
+    const orders = Array(20).fill(null).map(() => 
+      orderService.createOrder({ productId, quantity: 1 })
+    );
+
+    const results = await Promise.allSettled(orders);
+    const successCount = results.filter(r => r.status === 'fulfilled').length;
+
+    // 只有 10 个订单应该成功
+    expect(successCount).toBe(initialStock);
+  });
+});
+```
+
+**C. 接口测试模板 (API/Interface)**
+
+```typescript
+// REQ-003.test.ts - 用户信息查询接口
+describe('REQ-003: 用户信息查询接口', () => {
+  it('应该返回正确的响应格式', async () => {
+    const response = await request(app)
+      .get('/api/users/123')
+      .set('Authorization', `Bearer ${validToken}`)
+      .expect(200);
+
+    // 验证响应格式
+    expect(response.body).toMatchObject({
+      code: 0,
+      message: 'success',
+      data: {
+        userId: expect.any(String),
+        username: expect.any(String),
+        email: expect.any(String),
+        createdAt: expect.any(String)
+      }
+    });
+
+    // 验证不应该返回敏感信息
+    expect(response.body.data.password).toBeUndefined();
+    expect(response.body.data.salt).toBeUndefined();
+  });
+
+  it('[High] 应该验证 Authorization token', async () => {
+    await request(app)
+      .get('/api/users/123')
+      .expect(401);
+
+    await request(app)
+      .get('/api/users/123')
+      .set('Authorization', 'Bearer invalid-token')
+      .expect(401);
+  });
+});
+```
+
+**Step 4: 创建测试目录和文件**
+
+```bash
+# 1. 创建测试目录
+CreateDirectory: tests/requirement-validation/
+
+# 2. 为每个需求生成测试文件
+Write tests/requirement-validation/REQ-001.test.ts
+Write tests/requirement-validation/REQ-002.test.ts
+...
+
+# 3. 生成测试说明文档
+Write tests/requirement-validation/README.md
+```
+
+**Step 5: 生成测试说明文档**
+
+`tests/requirement-validation/README.md`:
+
+```markdown
+# 需求验证测试套件
+
+本目录包含基于需求点生成的验证测试，用于确保需求的正确实现。
+
+## 测试文件说明
+
+| 测试文件 | 需求 ID | 需求描述 | 测试用例数 | 状态 |
+|---------|---------|---------|-----------|------|
+| REQ-001.test.ts | REQ-001 | 用户注册邮件验证 | 5 | ⚠️ 有问题需修复 |
+| REQ-002.test.ts | REQ-002 | 订单创建数据一致性 | 3 | ⚠️ 有问题需修复 |
+
+## 运行测试
+
+```bash
+# 运行所有需求验证测试
+npm test tests/requirement-validation/
+
+# 运行特定需求的测试
+npm test tests/requirement-validation/REQ-001.test.ts
+```
+
+## 测试说明
+
+### ⚠️ 当前问题
+
+这些测试是基于诊断发现的问题生成的。**预期某些测试会失败**，因为它们暴露了代码中的问题。
+
+- 🔴 **Critical 问题对应的测试**：必须修复
+- 🟠 **High 问题对应的测试**：建议优先修复
+- 🟡 **Medium 问题对应的测试**：可以后续优化
+
+### 修复流程
+
+1. 运行测试，查看哪些失败
+2. 根据失败信息和诊断报告修复代码
+3. 重新运行测试，确保通过
+4. 所有测试通过后，需求即满足
+
+## 测试覆盖的问题
+
+每个测试文件的注释标注了对应的问题：
+
+- `[Critical]`：严重问题，必须修复
+- `[High]`：高优先级问题
+- `[Medium]`：中优先级问题
+```
+
+### 2.5.4 测试生成输出
+
+在 Phase 2 审查完成后，显示测试生成进度：
+
+```
+🧪 正在生成辅助验证的单元测试...
+
+✅ [REQ-001] 生成测试: tests/requirement-validation/REQ-001.test.ts
+   - 5 个测试用例（2 Critical, 1 High, 2 正常流程）
+   
+✅ [REQ-002] 生成测试: tests/requirement-validation/REQ-002.test.ts
+   - 3 个测试用例（1 Critical, 2 边界条件）
+
+✅ 测试说明文档: tests/requirement-validation/README.md
+
+📝 共生成 2 个测试文件，8 个测试用例
+
+💡 提示：运行 'npm test tests/requirement-validation/' 执行这些测试
+```
+
+---
+
 ## Phase 3: 生成"需求 vs 实现"对照报告 🆕
 
-分析完成后，在根目录生成一份名为 `REQUIREMENT_VALIDATION_REPORT.md` 的详细对照报告。
+分析完成后，在根目录生成一份名为 `REQUIREMENT_VALIDATION_REPORT.md` 的诊断报告。
 
 **核心理念**：以需求为维度，展示每个需求的实现情况和问题。
+
+**报告原则**：
+- ✅ **保留**：需求信息、实现情况、问题列表、修复建议
+- ❌ **移除**：所有评估表格、修复计划表格、行动计划、总体评估章节
 
 **报告模板：**
 
@@ -1328,43 +1689,34 @@ RequirementValidationResult = {
   // 建议代码
   [修复后的代码片段]
   ```
-- **预计修复时间**: [小时数] 小时
 
 **🟠 [High] [问题标题]**
 - **位置**: `[文件名]:[行号]`
 - **问题描述**: [简要说明]
 - **影响**: [影响说明]
 - **修复建议**: [修复建议]
-- **预计修复时间**: [小时数] 小时
 
 **🟡 [Medium] [问题标题]**
 - **位置**: `[文件名]:[行号]`
 - **问题描述**: [简要说明]
 - **影响**: [影响说明]
 - **修复建议**: [修复建议]
-- **预计修复时间**: [小时数] 小时
 
-#### 📊 需求实现评估
+#### 🧪 验证测试
 
-| 评估维度 | 得分 | 说明 |
-|---------|------|------|
-| 功能完整性 | [  ]/100 | [说明] |
-| 数据一致性 | [  ]/100 | [说明] |
-| 异常处理 | [  ]/100 | [说明] |
-| 安全性 | [  ]/100 | [说明] |
-| **综合得分** | **[  ]/100** | **[总体评价]** |
+**测试文件**: `tests/requirement-validation/REQ-[ID].test.[ext]`
 
-#### 🛠️ 修复计划
+已为此需求生成 [数量] 个验证测试用例：
+- ✅ [数量] 个正常流程测试
+- ⚠️ [数量] 个问题验证测试（针对上述发现的问题）
+- 🔄 [数量] 个边界条件测试
 
-| 优先级 | 问题 | 预计时间 | 建议执行时间 |
-|--------|------|---------|-------------|
-| P0 | [问题描述] | [小时数] 小时 | 立即（今天） |
-| P1 | [问题描述] | [小时数] 小时 | 今日内 |
-| P2 | [问题描述] | [小时数] 小时 | 本周内 |
+**运行测试**:
+```bash
+npm test tests/requirement-validation/REQ-[ID].test.[ext]
+```
 
-**总计修复时间**: 约 [小时数] 小时
-
-**⚠️ 风险警告**: [如有Critical问题，说明风险]
+💡 **提示**: 这些测试会暴露上述问题。修复问题后，所有测试应该通过。
 
 ---
 
@@ -1372,106 +1724,7 @@ RequirementValidationResult = {
 
 ---
 
-## 📈 2. 总体评估
-
-### 2.1 需求实现概览
-
-| 需求 ID | 需求标题 | 实现状态 | 得分 | 问题数 |
-|---------|---------|---------|------|--------|
-| REQ-001 | [标题] | ⚠️ 部分实现 | 70/100 | 3 |
-| REQ-002 | [标题] | ❌ 实现错误 | 45/100 | 3 |
-| ... | ... | ... | ... | ... |
-
-**平均实现得分**: [分数]/100
-
-### 2.2 关键发现
-
-✅ **做得好的地方**:
-- [优点1]
-- [优点2]
-- [优点3]
-
-⚠️ **需要立即修复**:
-- **[REQ-XXX]**: [Critical问题摘要]
-- **[REQ-YYY]**: [Critical问题摘要]
-
-💡 **改进建议**:
-- [建议1]
-- [建议2]
-- [建议3]
-
-### 2.3 修复优先级总览
-
-| 优先级 | 问题数 | 预计总耗时 | 建议完成时间 |
-|--------|--------|-----------|-------------|
-| **P0 (Critical)** | [数量] 个 | [小时数] 小时 | **立即（1-2天内）** |
-| **P1 (High)** | [数量] 个 | [小时数] 小时 | 本周内 |
-| **P2 (Medium)** | [数量] 个 | [小时数] 小时 | 2周内 |
-| **P3 (Low)** | [数量] 个 | [小时数] 小时 | 1个月内 |
-
-**总计**: [总小时数] 小时（约 [天数] 个工作日）
-
----
-
-## 🎯 3. 行动计划
-
-### 3.1 本周行动清单
-
-**立即修复（P0）**:
-- [ ] [REQ-001] [问题描述] - [预计时间]
-- [ ] [REQ-002] [问题描述] - [预计时间]
-
-**高优先级（P1）**:
-- [ ] [REQ-XXX] [问题描述] - [预计时间]
-- [ ] [REQ-YYY] [问题描述] - [预计时间]
-
-### 3.2 后续跟进
-
-**中优先级（P2）** - 2周内:
-- [ ] [问题描述]
-- [ ] [问题描述]
-
-**低优先级（P3）** - 1个月内:
-- [ ] [问题描述]
-- [ ] [问题描述]
-
-### 3.3 预防措施
-
-为防止类似问题再次出现，建议：
-
-1. **代码审查Checklist**: 建立需求验证清单
-2. **单元测试**: 为Critical问题相关代码添加测试
-3. **集成测试**: 覆盖关键业务流程
-4. **监控告警**: 对数据一致性问题添加监控
-
----
-
-## 📝 4. 附录
-
-### 4.1 项目技术栈
-
-| 类型 | 技术 | 版本 |
-|------|------|------|
-| 开发语言 | [语言] | [版本] |
-| 主要框架 | [框架] | [版本] |
-| 数据存储 | [数据库] | [版本] |
-| 缓存 | [缓存] | [版本] |
-
-### 4.2 诊断统计
-
-- **诊断时间**: YYYY-MM-DD HH:MM
-- **需求数量**: [数量] 个
-- **相关文件数**: [数量] 个
-- **代码行数**: 约 [数量] 行
-- **总问题数**: [数量] 个
-
----
-
-**诊断完成时间**: YYYY-MM-DD HH:MM  
-**预计修复周期**: [周数] 周  
-**下次诊断建议**: [建议时间]
-
-🤖 **Generated by Project Doctor v2.0** - 需求驱动的项目诊断工具
+🤖 **Generated by Project Doctor v2.2** - 需求驱动的项目诊断工具
 ```
 
 ## 执行逻辑
@@ -1504,10 +1757,18 @@ RequirementValidationResult = {
 └─────────────┬───────────────────────────┘
               ↓
 ┌─────────────────────────────────────────┐
+│  Phase 2.5: 生成辅助验证的单元测试 🆕     │
+│  - 检测项目测试框架                      │
+│  - 为每个需求生成测试用例                │
+│  - 针对发现的问题编写验证测试            │
+│  - 生成测试说明文档                      │
+└─────────────┬───────────────────────────┘
+              ↓
+┌─────────────────────────────────────────┐
 │  Phase 3: 生成需求对照报告               │
 │  - 以需求为维度组织报告                  │
 │  - 详细展示每个需求的实现情况            │
-│  - 提供可执行的修复计划                  │
+│  - 列出问题清单及修复建议                │
 └─────────────────────────────────────────┘
 ```
 
@@ -1629,6 +1890,11 @@ RequirementValidationResult = {
          ⚠️  发现 2 个问题 (🔴 1 | 🟠 1)
    ✅ 审查完成，共发现 5 个问题
 
+🧪 Phase 2.5: 生成辅助验证的单元测试
+   ✅ [REQ-001] tests/requirement-validation/REQ-001.test.ts (5 个测试用例)
+   ✅ [REQ-002] tests/requirement-validation/REQ-002.test.ts (3 个测试用例)
+   ✅ 测试说明文档: tests/requirement-validation/README.md
+   
 📝 Phase 3: 生成需求对照报告
    ✅ 报告已生成: REQUIREMENT_VALIDATION_REPORT.md
 
@@ -1646,6 +1912,13 @@ RequirementValidationResult = {
 ⚠️  发现 2 个 Critical 问题，建议立即修复！
 
 📄 详细报告: ./REQUIREMENT_VALIDATION_REPORT.md
+🧪 验证测试: ./tests/requirement-validation/ (8 个测试用例)
+
+💡 下一步:
+   1. 查看报告了解问题详情
+   2. 运行测试验证问题: npm test tests/requirement-validation/
+   3. 修复代码
+   4. 重新运行测试确保通过
 ```
 
 ### 注意事项

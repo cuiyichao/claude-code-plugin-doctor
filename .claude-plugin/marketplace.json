@@ -32,8 +32,8 @@
     },
     {
       "name": "project-doctor",
-      "description": "需求驱动的项目诊断工具：支持测试用例文件输入，7种审查策略，智能定位问题，零误报",
-      "version": "2.1.1",
+      "description": "需求驱动的项目诊断工具：支持测试用例文件输入，7种审查策略，自动生成验证测试，智能定位问题，零误报",
+      "version": "2.2.0",
       "author": {
         "name": "Claude Code User",
         "email": ""
