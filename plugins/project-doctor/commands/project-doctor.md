@@ -42,6 +42,87 @@ description: 智能分析项目架构，生成规范文档，并深度扫描核�
 
 **⚠️ 这是诊断的起点，必须第一步执行，决不可跳过！**
 
+### 0.0 检测未完成的诊断任务 🆕
+
+**首先检查是否有未完成的诊断**：
+
+```bash
+# 检测进度文件
+Read ./.project-doctor-progress.json
+
+# 如果文件存在且包含未完成任务
+if progressFileExists && hasUnfinishedTasks:
+  显示进度信息并询问
+```
+
+**如果检测到未完成任务**：
+
+```yaml
+question: |
+  🔄 检测到未完成的诊断任务！
+  
+  上次诊断信息：
+  - 开始时间: 2025-11-21 15:30
+  - 诊断模式: 需求驱动
+  - 总需求数: 16 个
+  - 已完成: 8 个 (50%)
+  - 未完成: 8 个
+  
+  未完成的需求：
+  - [REQ-009] 视频任务列表查询
+  - [REQ-010] 视频任务详情查询
+  - [REQ-011] 视频任务取消
+  - [REQ-012] 视频任务状态更新
+  - [REQ-013] 错误处理和重试机制
+  - [REQ-014] 任务进度查询
+  - [REQ-015] 批量任务查询
+  - [REQ-016] 任务统计接口
+  
+  您希望如何处理？
+
+header: "🔄 发现未完成的诊断任务"
+options:
+  - label: "✅ 继续上次诊断（从 REQ-009 开始）"
+    value: "continue"
+  - label: "🔄 重新开始诊断"
+    value: "restart"
+  - label: "📊 只查看上次报告"
+    value: "view_report"
+  - label: "🗑️ 清除进度，退出"
+    value: "clear"
+```
+
+**处理用户选择**：
+
+```javascript
+if userChoice === "continue":
+  // 加载上次的配置和已完成的需求
+  loadProgressFile()
+  skipToRequirement("REQ-009")  // 跳过已完成的
+  continueFromPhase2()
+  
+else if userChoice === "restart":
+  // 删除进度文件，重新开始
+  deleteProgressFile()
+  continueToPhase0_1()
+  
+else if userChoice === "view_report":
+  // 显示已生成的部分报告
+  showExistingReport()
+  exit()
+  
+else if userChoice === "clear":
+  // 删除进度文件
+  deleteProgressFile()
+  exit()
+```
+
+**如果没有未完成任务**：
+
+直接继续到 Phase 0.1
+
+---
+
 ### 0.1 询问用户选择诊断模式
 
 使用 `AskUserQuestion` 询问用户选择诊断模式：
@@ -1764,24 +1845,140 @@ RequirementValidationResult = {
 }
 ```
 
-### 2.3 审查进度展示
+### 2.3 审查进度展示与实时保存 🆕
 
-在审查过程中，实时显示进度：
+**在审查过程中，实时显示进度并保存状态**：
+
+#### 审查流程中的进度保存
+
+```javascript
+// 初始化进度文件
+progressData = {
+  startTime: new Date().toISOString(),
+  mode: "requirement-driven",  // or "full-scan"
+  totalRequirements: TestRequirements.length,
+  completedRequirements: [],
+  pendingRequirements: TestRequirements.map(r => r.id),
+  partialReport: "",
+  lastUpdated: new Date().toISOString()
+}
+
+Write ./.project-doctor-progress.json with progressData
+
+// 遍历每个需求
+for each requirement in TestRequirements:
+  
+  // 显示进度
+  显示 "[${currentIndex}/${totalCount}] 审查 ${requirement.id}: ${requirement.title}"
+  
+  // 执行诊断
+  result = diagnoseRequirement(requirement)
+  
+  // ⭐ 关键：每完成一个需求就保存进度
+  progressData.completedRequirements.push({
+    id: requirement.id,
+    title: requirement.title,
+    completedAt: new Date().toISOString(),
+    issuesFound: result.issues.length,
+    status: result.overallStatus
+  })
+  
+  progressData.pendingRequirements = progressData.pendingRequirements.filter(id => id !== requirement.id)
+  progressData.lastUpdated = new Date().toISOString()
+  
+  // 追加部分报告内容
+  progressData.partialReport += generatePartialReport(result)
+  
+  // 保存进度文件（覆盖）
+  Write ./.project-doctor-progress.json with progressData
+  
+  // 显示已完成
+  显示 "  ✅ 已保存进度 (${completedRequirements.length}/${totalCount})"
+```
+
+#### 进度展示示例
 
 ```
 🔬 正在按需求进行针对性审查...
 
-[1/2] 审查 REQ-001: 用户注册邮件验证
-  📂 读取代码文件 (4 个)...
-  🔍 验证功能完整性...
+[1/16] 审查 REQ-001: 创建视频生产任务
+  📂 读取代码文件 (5 个)...
+  🔍 验证功能完整性、参数验证、错误处理...
   ⚠️  发现 3 个问题 (🔴 1 | 🟠 1 | 🟡 1)
+  ✅ 已保存进度 (1/16)
+  💾 进度文件: .project-doctor-progress.json
 
-[2/2] 审查 REQ-002: 订单创建流程
-  📂 读取代码文件 (6 个)...
-  🔍 验证数据一致性...
-  ⚠️  发现 2 个问题 (🔴 1 | 🟠 1)
+[2/16] 审查 REQ-002: 查询任务列表
+  📂 读取代码文件 (4 个)...
+  🔍 验证查询逻辑、分页、过滤...
+  ⚠️  发现 2 个问题 (🟠 1 | 🟡 1)
+  ✅ 已保存进度 (2/16)
 
-✅ 审查完成！共发现 5 个问题。
+[3/16] 审查 REQ-003: 获取任务详情
+  📂 读取代码文件 (3 个)...
+  🔍 验证数据完整性...
+  ✅ 未发现问题
+  ✅ 已保存进度 (3/16)
+
+...
+
+⚠️ Token 预警：当前剩余 50,000 tokens
+由于 token 限制，诊断将暂停。
+
+📊 当前进度：
+  - 已完成: 8/16 (50%)
+  - 未完成: 8 个需求
+  - 进度文件已保存: .project-doctor-progress.json
+  - 部分报告已生成: REQUIREMENT_VALIDATION_REPORT_PARTIAL.md
+
+💡 下次运行 /project-doctor 时，选择"继续上次诊断"即可从 REQ-009 继续！
+```
+
+#### 进度文件格式
+
+`.project-doctor-progress.json`:
+```json
+{
+  "startTime": "2025-11-21T15:30:00.000Z",
+  "mode": "requirement-driven",
+  "totalRequirements": 16,
+  "completedRequirements": [
+    {
+      "id": "REQ-001",
+      "title": "创建视频生产任务",
+      "completedAt": "2025-11-21T15:31:00.000Z",
+      "issuesFound": 3,
+      "status": "部分实现"
+    },
+    {
+      "id": "REQ-002",
+      "title": "查询任务列表",
+      "completedAt": "2025-11-21T15:32:00.000Z",
+      "issuesFound": 2,
+      "status": "部分实现"
+    }
+  ],
+  "pendingRequirements": [
+    "REQ-009",
+    "REQ-010",
+    "REQ-011",
+    "REQ-012",
+    "REQ-013",
+    "REQ-014",
+    "REQ-015",
+    "REQ-016"
+  ],
+  "partialReport": "# 需求验证报告（部分）\n\n### 需求 #1: 创建视频生产任务\n...",
+  "lastUpdated": "2025-11-21T15:38:00.000Z",
+  "testRequirements": [
+    {
+      "id": "REQ-001",
+      "title": "创建视频生产任务",
+      "description": "...",
+      "type": "FUNCTIONAL"
+    }
+  ]
+}
 ```
 
 ---
@@ -2416,7 +2613,94 @@ npm test tests/requirement-validation/REQ-001.test.ts
 
 ## Phase 3-A: 生成需求验证报告（需求驱动模式）
 
-分析完成后，在根目录生成一份名为 `REQUIREMENT_VALIDATION_REPORT.md` 的诊断报告。
+### 3-A.1 检查诊断完成情况 🆕
+
+```javascript
+// 检查是否所有需求都已诊断
+if (completedRequirements.length === totalRequirements):
+  // 所有需求都诊断完成
+  reportType = "FINAL"
+  reportFileName = "REQUIREMENT_VALIDATION_REPORT.md"
+  
+else:
+  // 只完成了部分需求（可能因 token 限制中断）
+  reportType = "PARTIAL"
+  reportFileName = "REQUIREMENT_VALIDATION_REPORT_PARTIAL.md"
+  
+  // 同时更新进度文件
+  progressData.partialReportGenerated = true
+```
+
+### 3-A.2 生成报告
+
+**根据报告类型生成不同的报告**：
+
+#### 情况 1: 完整报告（所有需求已诊断）
+
+生成文件：`REQUIREMENT_VALIDATION_REPORT.md`
+
+```
+✅ 诊断完成！
+
+📊 诊断结果:
+  - 需求数: 16 个
+  - 完全实现: 5 个
+  - 部分实现: 8 个
+  - 实现错误: 3 个
+  - 发现问题: 45 个 (🔴 8 | 🟠 18 | 🟡 19)
+
+📄 完整报告: ./REQUIREMENT_VALIDATION_REPORT.md
+🧪 验证测试: ./tests/requirement-validation/ (48 个测试用例)
+
+💾 进度文件已清除（诊断已完成）
+```
+
+**并删除进度文件**：
+```bash
+Delete ./.project-doctor-progress.json
+```
+
+---
+
+#### 情况 2: 部分报告（因 token 限制中断）
+
+生成文件：`REQUIREMENT_VALIDATION_REPORT_PARTIAL.md`
+
+```
+⚠️ 诊断部分完成（因 token 限制）
+
+📊 当前进度:
+  - 总需求数: 16 个
+  - 已诊断: 8 个 (50%)
+  - 未诊断: 8 个
+  - 发现问题: 22 个 (🔴 4 | 🟠 9 | 🟡 9)
+
+📄 部分报告: ./REQUIREMENT_VALIDATION_REPORT_PARTIAL.md
+💾 进度文件: ./.project-doctor-progress.json
+
+🔄 未诊断的需求:
+  - [REQ-009] 视频任务列表查询
+  - [REQ-010] 视频任务详情查询
+  - [REQ-011] 视频任务取消
+  - [REQ-012] 视频任务状态更新
+  - [REQ-013] 错误处理和重试机制
+  - [REQ-014] 任务进度查询
+  - [REQ-015] 批量任务查询
+  - [REQ-016] 任务统计接口
+
+💡 下次运行 /project-doctor，选择"✅ 继续上次诊断"即可接着完成！
+
+📝 注意事项:
+  - 部分报告只包含已诊断的 8 个需求
+  - 单元测试未生成（token 限制）
+  - 继续诊断后会生成完整报告和测试
+```
+
+**保留进度文件，不删除**
+
+---
+
+### 3-A.3 报告模板
 
 **核心理念**：以需求为维度，展示每个需求的实现情况和问题。
 
@@ -2424,7 +2708,7 @@ npm test tests/requirement-validation/REQ-001.test.ts
 - ✅ **只保留**：需求信息、实现情况、问题列表（含代码证据）、修复建议
 - ❌ **移除**：评估表格、修复计划表格、行动计划、总体评估
 
-**报告模板：**
+**完整报告模板：**
 
 ```markdown
 # 📋 需求验证报告 (Requirement Validation Report)
@@ -2444,6 +2728,41 @@ npm test tests/requirement-validation/REQ-001.test.ts
 | 指标 | 数量 | 占比 |
 |------|------|------|
 | 📋 总需求数 | [数量] | 100% |
+| ✅ 完全实现 | [数量] | [百分比]% |
+| ⚠️ 部分实现 | [数量] | [百分比]% |
+| ❌ 未实现/实现错误 | [数量] | [百分比]% |
+```
+
+---
+
+**部分报告模板：**（如果因 token 限制中断）
+
+```markdown
+# 📋 需求验证报告（部分）(Requirement Validation Report - Partial)
+
+⚠️ **本报告是部分诊断结果**（因 token 限制，诊断未完成）
+
+**生成时间**: YYYY-MM-DD HH:MM
+**项目路径**: [项目路径]  
+**诊断进度**: [已完成数]/[总需求数] ([百分比]%)
+**进度文件**: `.project-doctor-progress.json`
+
+---
+
+## 📊 执行摘要（部分）
+
+### 需求验证统计
+
+| 指标 | 数量 | 说明 |
+|------|------|------|
+| 📋 总需求数 | [数量] | 计划诊断的总数 |
+| ✅ 已诊断 | [数量] ([百分比]%) | 本次完成的数量 |
+| ⏸️ 未诊断 | [数量] ([百分比]%) | 待继续的数量 |
+
+### 已诊断需求统计
+
+| 指标 | 数量 | 占比 |
+|------|------|------|
 | ✅ 完全实现 | [数量] | [百分比]% |
 | ⚠️ 部分实现 | [数量] | [百分比]% |
 | ❌ 未实现/实现错误 | [数量] | [百分比]% |
@@ -2569,6 +2888,56 @@ npm test tests/requirement-validation/REQ-[ID].test.[ext]
 ---
 
 🤖 **Generated by Project Doctor v3.0** - 需求驱动的项目诊断工具
+```
+
+**如果是部分报告，在末尾添加续接说明：**
+
+```markdown
+---
+
+## 🔄 继续诊断
+
+本报告只包含 **[已完成数]/[总需求数]** 的诊断结果。
+
+### 未诊断的需求
+
+以下需求尚未诊断，待继续：
+
+- `[REQ-009]` 视频任务列表查询
+- `[REQ-010]` 视频任务详情查询
+- `[REQ-011]` 视频任务取消
+- `[REQ-012]` 视频任务状态更新
+- `[REQ-013]` 错误处理和重试机制
+- `[REQ-014]` 任务进度查询
+- `[REQ-015]` 批量任务查询
+- `[REQ-016]` 任务统计接口
+
+### 如何继续
+
+1. **再次运行插件**：
+   ```bash
+   /project-doctor
+   ```
+
+2. **选择"继续上次诊断"**：
+   - 插件会自动检测到未完成的任务
+   - 选择"✅ 继续上次诊断"
+   - 从 REQ-009 开始接着诊断
+
+3. **完成后生成完整报告**：
+   - 所有需求诊断完成后
+   - 会生成完整的 `REQUIREMENT_VALIDATION_REPORT.md`
+   - 并生成单元测试
+
+### 进度文件
+
+诊断进度已保存在：`.project-doctor-progress.json`
+
+请勿手动删除此文件，否则无法继续诊断。
+
+---
+
+🤖 **Generated by Project Doctor v3.0** - 需求驱动的项目诊断工具（部分报告）
 ```
 
 ---

@@ -1,7 +1,7 @@
 {
   "name": "project-doctor",
-  "description": "智能项目诊断工具：支持需求驱动和全链路两种模式，精准定位问题，自动生成验证测试",
-  "version": "3.0.0",
+  "description": "智能项目诊断工具：支持需求驱动和全链路两种模式，精准定位问题，自动生成验证测试，支持进度保存和续接",
+  "version": "3.1.0",
   "author": {
     "name": "Claude Code User"
   },

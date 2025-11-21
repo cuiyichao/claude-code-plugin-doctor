@@ -32,8 +32,8 @@
     },
     {
       "name": "project-doctor",
-      "description": "智能项目诊断工具：双模式（需求驱动+全链路扫描），精准代码定位，自动生成测试，零误报",
-      "version": "3.0.0",
+      "description": "智能项目诊断工具：双模式（需求驱动+全链路扫描），精准代码定位，自动生成测试，支持进度保存续接",
+      "version": "3.1.0",
       "author": {
         "name": "Claude Code User",
         "email": ""
